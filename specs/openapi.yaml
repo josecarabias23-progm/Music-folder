@@ -1,0 +1,73 @@
+openapi: 3.0.1
+info:
+  title: Music Folder API
+  version: '0.1.0'
+  description: API para subir/descargar partituras, registros, instrumentos y foros.
+servers:
+  - url: http://localhost:3000
+paths:
+  /sheets:
+    post:
+      summary: Subir una partitura
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                sheet:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload successful
+  /sheets/{filename}:
+    get:
+      summary: Descargar una partitura
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File download
+  /records:
+    get:
+      summary: Listar registros
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Crear registro
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Created
+  /instruments:
+    get:
+      summary: Listar instrumentos
+      responses:
+        '200':
+          description: OK
+  /forums/threads:
+    get:
+      summary: Listar threads
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Crear thread
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Created

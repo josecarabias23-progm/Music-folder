@@ -1,0 +1,17 @@
+{
+  "name": "music-folder",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "bootstrap": "npm install",
+    "start:backend": "npm --workspace packages/backend run start:dev",
+    "start:frontend": "npm --workspace packages/frontend run dev",
+    "start:dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}
