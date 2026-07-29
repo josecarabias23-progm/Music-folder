@@ -24,4 +24,17 @@ export class ForumsController {
   @ApiOperation({ summary: 'Obtener un hilo de foro por id' })
   @ApiParam({ name: 'id', example: '1' })
   findOne(@Param('id') id: string) { return this.forumsService.findOne(id); }
+
+  @Post('threads/:id/comments')
+  @ApiOperation({ summary: 'Agregar un comentario a un hilo' })
+  addComment(@Param('id') id: string, @Body() body: { author?: string; content: string }) {
+    return this.forumsService.addComment(id, body.author || 'Músico', body.content);
+  }
+
+  @Post('threads/:id/like')
+  @ApiOperation({ summary: 'Dar me gusta a un hilo' })
+  like(@Param('id') id: string) {
+    return this.forumsService.like(id);
+  }
 }
+
