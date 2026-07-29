@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class ForumsService {
@@ -14,6 +14,12 @@ export class ForumsService {
   create(payload: { title: string }) {
     const thread = { id: Date.now(), title: payload.title, posts: 0 };
     this.threads.push(thread);
+    return thread;
+  }
+
+  findOne(id: string) {
+    const thread = this.threads.find((item) => String(item.id) === id);
+    if (!thread) throw new NotFoundException(`Forum thread ${id} not found`);
     return thread;
   }
 }

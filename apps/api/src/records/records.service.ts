@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class RecordsService {
@@ -16,4 +16,8 @@ export class RecordsService {
     this.records.push(record);
     return record;
   }
+
+  findOne(id: string) { const record = this.records.find((item) => String(item.id) === id); if (!record) throw new NotFoundException(`Record ${id} not found`); return record; }
+  update(id: string, payload: Partial<{ title: string; artist: string; date: string }>) { const record = this.findOne(id); Object.assign(record, payload); return record; }
+  remove(id: string) { const index = this.records.findIndex((item) => String(item.id) === id); if (index < 0) throw new NotFoundException(`Record ${id} not found`); this.records.splice(index, 1); }
 }

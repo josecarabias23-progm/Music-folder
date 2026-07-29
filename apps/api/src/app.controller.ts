@@ -1,27 +1,15 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AppService } from './app.service';
 
 @Controller()
+@ApiTags('System')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Get('health')
-  @ApiTags('Health')
-  @ApiOperation({ summary: 'Health check endpoint' })
-  @ApiResponse({
-    status: 200,
-    description: 'Health status',
-    schema: {
-      example: {
-        status: 'healthy',
-        timestamp: '2024-01-20T15:30:00Z',
-        version: '1.0.0',
-      },
-    },
-  })
+  @ApiOperation({ summary: 'Verificar el estado de la API' })
   getHealth() {
     return this.appService.getHealth();
   }
 }
-
