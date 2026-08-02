@@ -1,48 +1,59 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { RehearsalLog } from './entities/rehearsal-log.entity';
+
+export interface RehearsalRecord {
+  id: string;
+  title: string;
+  type: string;
+  date: string;
+  time: string;
+  venue: string;
+  attendeesCount?: number;
+  notes?: string;
+}
 
 @Injectable()
 export class RecordsService {
-  constructor(
-    @InjectRepository(RehearsalLog)
-    private readonly rehearsalRepository: Repository<RehearsalLog>,
-  ) {}
+  private readonly records: RehearsalRecord[] = [
+    { id: '1', title: 'Ensayo general', type: 'General', date: 'Jueves, 31 de julio', time: '19:00–22:00', venue: 'Auditorio Manuel de Falla', attendeesCount: 46, notes: 'Revisar pasajes de Beethoven Mvt 2' },
+    { id: '2', title: 'Seccionales de cuerdas', type: 'Seccional', date: 'Lunes, 28 de julio', time: '18:00–20:00', venue: 'Sala de Ensayo B', attendeesCount: 18, notes: 'Trabajar afinación de violines II' },
+    { id: '3', title: 'Concierto de cámara', type: 'Concierto', date: 'Sábado, 02 de agosto', time: '20:30–22:30', venue: 'Sala Principal', attendeesCount: 52, notes: 'Código de vestimenta: Frac / Vestido negro' },
+  ];
 
-  async findAll() {
-    return this.rehearsalRepository.find();
+  findAll() {
+    return this.records;
   }
 
-  async create(payload: Partial<RehearsalLog>) {
-    const record = this.rehearsalRepository.create({
+  create(payload: Partial<RehearsalRecord>) {
+    const record: RehearsalRecord = {
+      id: String(Date.now()),
       title: payload.title || 'Nuevo ensayo',
       type: payload.type || 'General',
-      date_text: payload.date_text || 'Próxima fecha',
-      time_text: payload.time_text || '19:00 - 21:00',
+      date: payload.date || 'Próxima fecha',
+      time: payload.time || '19:00 - 21:00',
       venue: payload.venue || 'Sala Principal',
-      attendees_count: payload.attendees_count || 0,
+      attendeesCount: payload.attendeesCount || 0,
       notes: payload.notes || '',
-    });
-
-    return this.rehearsalRepository.save(record);
+    };
+    this.records.unshift(record);
+    return record;
   }
 
-  async findOne(id: string) {
-    const record = await this.rehearsalRepository.findOne({ where: { id } });
+  findOne(id: string) {
+    const record = this.records.find((item) => String(item.id) === id);
     if (!record) throw new NotFoundException(`Record ${id} not found`);
     return record;
   }
 
-  async update(id: string, payload: Partial<RehearsalLog>) {
-    const record = await this.findOne(id);
+  update(id: string, payload: Partial<RehearsalRecord>) {
+    const record = this.findOne(id);
     Object.assign(record, payload);
-    return this.rehearsalRepository.save(record);
+    return record;
   }
 
-  async remove(id: string) {
-    const record = await this.findOne(id);
-    await this.rehearsalRepository.remove(record);
+  remove(id: string) {
+    const index = this.records.findIndex((item) => String(item.id) === id);
+    if (index < 0) throw new NotFoundException(`Record ${id} not found`);
+    this.records.splice(index, 1);
     return { success: true };
   }
 }

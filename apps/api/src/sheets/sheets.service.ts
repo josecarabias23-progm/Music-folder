@@ -1,56 +1,64 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Sheet } from './entities/sheet.entity';
+
+export interface ScoreItem {
+  id: string;
+  title: string;
+  composer: string;
+  ensemble: string;
+  category: 'Orquesta' | 'Cámara' | 'Solista' | 'Coro';
+  difficulty?: string;
+  isFavorite?: boolean;
+  type?: string;
+  owner?: string;
+}
 
 @Injectable()
 export class SheetsService {
-  constructor(
-    @InjectRepository(Sheet)
-    private readonly sheetsRepository: Repository<Sheet>,
-  ) {}
+  private readonly sheets: ScoreItem[] = [
+    { id: '1', title: 'Sinfonía n.º 5', composer: 'L. van Beethoven', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: true, type: 'pdf', owner: 'Orquesta Principal' },
+    { id: '2', title: 'Danzón n.º 2', composer: 'Arturo Márquez', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Intermedio', isFavorite: true, type: 'pdf', owner: 'Orquesta Principal' },
+    { id: '3', title: 'Las cuatro estaciones', composer: 'A. Vivaldi', ensemble: 'Cuerdas', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false, type: 'musicxml', owner: 'Sección Cuerdas' },
+    { id: '4', title: 'El amor brujo', composer: 'M. de Falla', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: false, type: 'pdf', owner: 'Orquesta Principal' },
+    { id: '5', title: 'Clair de Lune', composer: 'C. Debussy', ensemble: 'Piano solo', category: 'Solista', difficulty: 'Fácil', isFavorite: true, type: 'pdf', owner: 'Solistas' },
+    { id: '6', title: 'Suite Holberg', composer: 'E. Grieg', ensemble: 'Cuerdas', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false, type: 'pdf', owner: 'Sección Cuerdas' },
+  ];
 
-  async findAll() {
-    return this.sheetsRepository.find();
+  findAll() {
+    return this.sheets;
   }
 
-  async create(payload: Partial<Sheet>) {
-    const sheet = new Sheet();
-    Object.assign(sheet, {
+  create(payload: Partial<ScoreItem>) {
+    const sheet: ScoreItem = {
+      id: String(Date.now()),
       title: payload.title || 'Nueva Obra',
       composer: payload.composer || 'Anónimo',
-      owner_id: payload.owner_id || 'user-seed',
-      organization_id: payload.organization_id || null,
-      file_url: payload.file_url || 'https://example.com/score.pdf',
-      file_format: payload.file_format || 'pdf',
-      file_size: payload.file_size || 0,
-      instrument_role: payload.instrument_role || 'General',
-      key_signature: payload.key_signature || 'C',
-      time_signature: payload.time_signature || '4/4',
-      duration_minutes: payload.duration_minutes || null,
-      difficulty_level: payload.difficulty_level || 'beginner',
-      tags: payload.tags || [],
-      is_public: payload.is_public ?? false,
-    });
-
-    return this.sheetsRepository.save(sheet);
+      ensemble: payload.ensemble || 'Orquesta completa',
+      category: (payload.category as any) || 'Orquesta',
+      difficulty: payload.difficulty || 'Intermedio',
+      isFavorite: payload.isFavorite || false,
+      type: payload.type || 'pdf',
+      owner: payload.owner || 'Usuario',
+    };
+    this.sheets.unshift(sheet);
+    return sheet;
   }
 
-  async findOne(id: string) {
-    const sheet = await this.sheetsRepository.findOne({ where: { id } });
+  findOne(id: string) {
+    const sheet = this.sheets.find((item) => String(item.id) === id);
     if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
     return sheet;
   }
 
-  async update(id: string, payload: Partial<Sheet>) {
-    const sheet = await this.findOne(id);
+  update(id: string, payload: Partial<ScoreItem>) {
+    const sheet = this.findOne(id);
     Object.assign(sheet, payload);
-    return this.sheetsRepository.save(sheet);
+    return sheet;
   }
 
-  async remove(id: string) {
-    const sheet = await this.findOne(id);
-    await this.sheetsRepository.remove(sheet);
+  remove(id: string) {
+    const index = this.sheets.findIndex((item) => String(item.id) === id);
+    if (index < 0) throw new NotFoundException(`Sheet ${id} not found`);
+    this.sheets.splice(index, 1);
     return { success: true };
   }
 }

@@ -11,9 +11,7 @@
     "start:web": "npm --workspace apps/web run dev",
     "start:dev": "concurrently \"npm run start:api\" \"npm run start:web\"",
     "build:api": "npm --workspace apps/api run build",
-    "build:web": "npm --workspace apps/web run build",
-    "history:specs": "mkdir -p history/openspec history/specs && rm -rf history/openspec history/specs && mkdir -p history/openspec history/specs && cp -R openspec/. history/openspec/ && cp specs/openapi.yaml history/specs/openapi.yaml",
-    "db:sqlite": "python db/init_sqlite.py"
+    "build:web": "npm --workspace apps/web run build"
   },
   "devDependencies": {
     "concurrently": "^7.6.0"
