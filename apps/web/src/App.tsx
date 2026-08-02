@@ -3,6 +3,42 @@ import { api, ForumThread, InstrumentItem, RehearsalRecord, ScoreItem } from './
 
 type View = 'inicio' | 'biblioteca' | 'ensayos' | 'instrumentos' | 'foro';
 
+type SessionUser = {
+  name: string;
+  email: string;
+};
+
+type AssistantMessage = {
+  id: number;
+  role: 'assistant' | 'user';
+  text: string;
+};
+
+const STORAGE_KEY = 'music-folder-session';
+
+function getStoredUser(): SessionUser | null {
+  if (typeof window === 'undefined') return null;
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as SessionUser;
+  } catch {
+    return null;
+  }
+}
+
+function getAssistantReply(input: string): string {
+  const text = input.toLowerCase();
+
+  if (text.includes('ensayo')) return 'Revisé tu agenda: conviene dejar un bloque de 30 minutos para la sección de cuerdas antes del ensayo general.';
+  if (text.includes('partitura') || text.includes('biblioteca')) return 'La biblioteca está organizada por repertorio y categoría. Puedo ayudarte a encontrar una obra por estilo o ensamble.';
+  if (text.includes('instrumento')) return 'Te recomiendo revisar la ficha del instrumento en la sección de instrumentos para consultar clave, transposición y uso.';
+  if (text.includes('foro')) return 'En la comunidad puedes abrir una nueva discusión o responder a una publicación existente para coordinar ideas.';
+
+  return 'Puedo ayudarte a revisar repertorio, ensayos y coordinación del grupo. ¿Qué quieres consultar?';
+}
+
 const nav: Array<{ id: View; icon: string; label: string }> = [
   { id: 'inicio', icon: '⌂', label: 'Inicio' },
   { id: 'biblioteca', icon: '♫', label: 'Biblioteca' },
@@ -22,6 +58,17 @@ const titles: Record<View, [string, string]> = {
 export default function App() {
   const [view, setView] = useState<View>('inicio');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sessionUser, setSessionUser] = useState<SessionUser | null>(() => getStoredUser());
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [assistantOpen, setAssistantOpen] = useState(true);
+  const [assistantInput, setAssistantInput] = useState('');
+  const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([
+    {
+      id: 1,
+      role: 'assistant',
+      text: 'Hola, soy tu asistente de Music Folder. Puedo ayudarte con repertorio, ensayos y coordinación del grupo.',
+    },
+  ]);
 
   // Data states
   const [scores, setScores] = useState<ScoreItem[]>([]);
@@ -62,6 +109,52 @@ export default function App() {
   }, []);
 
   // Actions
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = loginForm.email.trim();
+    if (!email) return;
+
+    const nextUser: SessionUser = {
+      name: email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
+      email,
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+    setSessionUser(nextUser);
+  };
+
+  const handleLogout = () => {
+    window.localStorage.removeItem(STORAGE_KEY);
+    setSessionUser(null);
+    setView('inicio');
+  };
+
+  const handleAssistantSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = assistantInput.trim();
+    if (!text) return;
+
+    const userMessage: AssistantMessage = {
+      id: Date.now(),
+      role: 'user',
+      text,
+    };
+
+    setAssistantMessages((prev) => [...prev, userMessage]);
+    setAssistantInput('');
+
+    window.setTimeout(() => {
+      setAssistantMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: 'assistant',
+          text: getAssistantReply(text),
+        },
+      ]);
+    }, 180);
+  };
+
   const handleAddScore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newScore.title) return;
@@ -145,6 +238,53 @@ export default function App() {
 
   const [heading, subheading] = titles[view];
 
+  if (!sessionUser) {
+    return (
+      <div className="login-screen">
+        <div className="login-card">
+          <div className="brand-lockup">
+            <span>𝄞</span>
+            <div>
+              <strong>Music Folder</strong>
+              <small>Tu cuaderno de ensayos y repertorio</small>
+            </div>
+          </div>
+
+          <div className="login-copy">
+            <h1>Iniciá sesión</h1>
+            <p>Accedé al panel de biblioteca, ensayos y comunidad musical.</p>
+          </div>
+
+          <form className="login-form" onSubmit={handleLogin}>
+            <div className="login-field">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                placeholder="valentina@musicfolder.com"
+                value={loginForm.email}
+                onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+              />
+            </div>
+
+            <div className="login-field">
+              <label htmlFor="password">Contraseña</label>
+              <input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+              />
+            </div>
+
+            <button type="submit" className="primary login-submit">Entrar</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       {/* Sidebar */}
@@ -188,8 +328,9 @@ export default function App() {
           </div>
           <div className="header-actions">
             <button title="Búsqueda rápida">⌕</button>
-            <button title="Notificaciones">♧</button>
-            <div className="avatar">V</div>
+            <button title="Asistente virtual" onClick={() => setAssistantOpen((open) => !open)}>✦</button>
+            <button title="Cerrar sesión" onClick={handleLogout}>⇥</button>
+            <div className="avatar">{sessionUser.name[0]?.toUpperCase() || 'V'}</div>
           </div>
         </header>
 
@@ -471,6 +612,39 @@ export default function App() {
           )}
         </div>
       </main>
+
+      <div className="assistant-widget">
+        <button className="assistant-toggle" onClick={() => setAssistantOpen((open) => !open)}>
+          <span>✦</span>
+          Asistente virtual
+        </button>
+
+        {assistantOpen && (
+          <div className="assistant-panel">
+            <div className="assistant-header">
+              <strong>Ayuda rápida</strong>
+              <small>Responde sobre ensayos, repertorio y comunidad</small>
+            </div>
+
+            <div className="assistant-messages">
+              {assistantMessages.map((message) => (
+                <div key={message.id} className={`assistant-message ${message.role}`}>
+                  {message.text}
+                </div>
+              ))}
+            </div>
+
+            <form className="assistant-form" onSubmit={handleAssistantSubmit}>
+              <input
+                value={assistantInput}
+                onChange={(e) => setAssistantInput(e.target.value)}
+                placeholder="Preguntá por repertorio, ensayos o coordinación..."
+              />
+              <button type="submit" className="primary">Enviar</button>
+            </form>
+          </div>
+        )}
+      </div>
 
       {/* MODAL: SUBIR PARTITURA */}
       {showUploadScoreModal && (
