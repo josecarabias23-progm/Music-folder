@@ -19,19 +19,9 @@ const titles: Record<View, [string, string]> = {
   foro: ['Foro de la comunidad', 'Comparte conocimiento con músicos y directores.'],
 };
 
-const getStoredUser = () => {
-  if (typeof window === 'undefined') return null;
-  const raw = window.localStorage.getItem('music-folder-user');
-  return raw ? JSON.parse(raw) : null;
-};
-
 export default function App() {
   const [view, setView] = useState<View>('inicio');
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => typeof window !== 'undefined' && Boolean(window.localStorage.getItem('music-folder-user')));
-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(() => getStoredUser());
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [loginError, setLoginError] = useState('');
 
   // Data states
   const [scores, setScores] = useState<ScoreItem[]>([]);
@@ -62,11 +52,6 @@ export default function App() {
   const [newRecord, setNewRecord] = useState({ title: '', type: 'General', date: '', time: '19:00–21:00', venue: 'Auditorio Manuel de Falla', notes: '' });
   const [newThread, setNewThread] = useState({ title: '', author: 'Valentina Ruiz', category: 'Repertorio', content: '' });
   const [commentText, setCommentText] = useState('');
-  const [assistantOpen, setAssistantOpen] = useState(false);
-  const [assistantInput, setAssistantInput] = useState('');
-  const [assistantMessages, setAssistantMessages] = useState([
-    { id: 'welcome', role: 'assistant', text: 'Hola, soy tu asistente musical. Puedo ayudarte a revisar repertorio, ensayos o comunidad.' },
-  ]);
 
   // Initial Load
   useEffect(() => {
@@ -133,43 +118,6 @@ export default function App() {
     }
   };
 
-  const getAssistantReply = (input: string) => {
-    const normalized = input.toLowerCase();
-
-    if (normalized.includes('ensayo') || normalized.includes('agenda')) {
-      return 'Puedo ayudarte a revisar los ensayos agendados. En la sección Ensayos podés ver fechas, horarios y lugar.';
-    }
-
-    if (normalized.includes('partitura') || normalized.includes('biblioteca') || normalized.includes('repertorio')) {
-      return 'La biblioteca centraliza las partituras activas del ensamble. Si querés, podés explorar la sección Biblioteca y filtrar por categoría.';
-    }
-
-    if (normalized.includes('foro') || normalized.includes('comunidad') || normalized.includes('publicación')) {
-      return 'El foro sirve para compartir recursos, dudas y recomendaciones entre la comunidad musical. Podés abrir la sección Comunidad desde el menú.';
-    }
-
-    if (normalized.includes('instrumento') || normalized.includes('cuerda') || normalized.includes('viento')) {
-      return 'La sección Instrumentos te ayuda a consultar familias e información útil de cada instrumento del ensamble.';
-    }
-
-    return 'Puedo orientarte sobre repertorio, ensayos, foro e instrumentos. Decime qué parte de la app querés revisar.';
-  };
-
-  const handleAssistantSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!assistantInput.trim()) return;
-
-    const userQuestion = assistantInput.trim();
-    const nextMessages = [
-      ...assistantMessages,
-      { id: String(Date.now()), role: 'user', text: userQuestion },
-      { id: String(Date.now() + 1), role: 'assistant', text: getAssistantReply(userQuestion) },
-    ];
-
-    setAssistantMessages(nextMessages);
-    setAssistantInput('');
-  };
-
   // Filtered lists
   const filteredScores = scores.filter((s) => {
     const matchCat =
@@ -197,88 +145,6 @@ export default function App() {
 
   const [heading, subheading] = titles[view];
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!loginForm.email.trim() || !loginForm.password.trim()) {
-      setLoginError('Ingresá tu email y contraseña para entrar.');
-      return;
-    }
-
-    const name = loginForm.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-    const user = { name: name || 'Músico', email: loginForm.email.trim() };
-
-    window.localStorage.setItem('music-folder-user', JSON.stringify(user));
-    setCurrentUser(user);
-    setIsLoggedIn(true);
-    setLoginError('');
-  };
-
-  const handleLogout = () => {
-    window.localStorage.removeItem('music-folder-user');
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    setLoginForm({ email: '', password: '' });
-  };
-
-  if (!isLoggedIn) {
-    return (
-      <div className="login-screen">
-        <div className="login-layout">
-          <div className="login-visual">
-            <div className="stitch-pill">Stitch • Studio</div>
-            <div className="login-visual-title">Tu centro de repertorio, ensayos y comunidad.</div>
-            <div className="login-visual-copy">
-              Organiza partituras, coordina fuentes sonoras, arma ensayos y comparte el pulso de tu ensamble desde una sola vista.
-            </div>
-            <div className="login-feature-grid">
-              <div className="feature-card">
-                <strong>Biblioteca</strong>
-                <span>Partituras y repertorio</span>
-              </div>
-              <div className="feature-card">
-                <strong>Ensayos</strong>
-                <span>Agenda y seguimiento</span>
-              </div>
-              <div className="feature-card">
-                <strong>Foro</strong>
-                <span>Comunidad musical activa</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="login-card">
-            <div className="login-brand">𝄞 Music Folder</div>
-            <h1>Iniciar sesión</h1>
-            <p>Accedé con tu cuenta para continuar en la biblioteca, ensayos y comunidad.</p>
-            <form className="login-form" onSubmit={handleLogin}>
-              <label>
-                <span>Email</span>
-                <input
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(e) => setLoginForm((prev) => ({ ...prev, email: e.target.value }))}
-                  placeholder="usuario@musicfolder.dev"
-                />
-              </label>
-              <label>
-                <span>Contraseña</span>
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value }))}
-                  placeholder="••••••••"
-                />
-              </label>
-              {loginError && <small className="login-error">{loginError}</small>}
-              <button type="submit" className="primary login-submit">Entrar</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app-shell">
       {/* Sidebar */}
@@ -303,12 +169,11 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <div className="avatar">{currentUser?.name?.charAt(0)?.toUpperCase() || 'V'}</div>
+          <div className="avatar">V</div>
           <div>
-            <b>{currentUser?.name || 'Valentina Ruiz'}</b>
-            <small>{currentUser?.email || 'Directora'}</small>
+            <b>Valentina Ruiz</b>
+            <small>Directora</small>
           </div>
-          <button className="logout-link" onClick={handleLogout}>Cerrar sesión</button>
         </div>
       </aside>
 
@@ -324,8 +189,7 @@ export default function App() {
           <div className="header-actions">
             <button title="Búsqueda rápida">⌕</button>
             <button title="Notificaciones">♧</button>
-            <div className="avatar">{currentUser?.name?.charAt(0)?.toUpperCase() || 'V'}</div>
-            <button className="btn-secondary" onClick={handleLogout}>Salir</button>
+            <div className="avatar">V</div>
           </div>
         </header>
 
@@ -413,40 +277,6 @@ export default function App() {
                 </article>
               </section>
             </>
-          )}
-
-          <button className="assistant-fab" onClick={() => setAssistantOpen((prev) => !prev)}>
-            ✦ Asistente
-          </button>
-
-          {assistantOpen && (
-            <div className="assistant-panel">
-              <div className="assistant-header">
-                <div className="assistant-title-wrap">
-                  <div className="assistant-avatar">✦</div>
-                  <div>
-                    <strong>Asistente virtual</strong>
-                    <small>Online ahora</small>
-                  </div>
-                </div>
-                <button className="close-btn" onClick={() => setAssistantOpen(false)} aria-label="Cerrar asistente">×</button>
-              </div>
-              <div className="assistant-messages">
-                {assistantMessages.map((message) => (
-                  <div key={message.id} className={`assistant-message ${message.role}`}>
-                    {message.text}
-                  </div>
-                ))}
-              </div>
-              <form className="assistant-form" onSubmit={handleAssistantSubmit}>
-                <input
-                  value={assistantInput}
-                  onChange={(e) => setAssistantInput(e.target.value)}
-                  placeholder="Preguntá por ensayos, repertorio o comunidad..."
-                />
-                <button type="submit" className="primary">Enviar</button>
-              </form>
-            </div>
           )}
 
           {/* VISTA: BIBLIOTECA */}

@@ -17,7 +17,7 @@ export enum SheetFileFormat {
 
 @Entity('scores')
 export class Sheet {
-  @PrimaryColumn('varchar')
+  @PrimaryColumn('uuid')
   id: string = uuid();
 
   @Column('varchar')
@@ -29,10 +29,10 @@ export class Sheet {
   @Column('varchar', { nullable: true })
   arranger: string | null;
 
-  @Column('varchar')
+  @Column('uuid')
   owner_id: string;
 
-  @Column('varchar', { nullable: true })
+  @Column('uuid', { nullable: true })
   organization_id: string | null;
 
   @Column('varchar')
@@ -41,7 +41,7 @@ export class Sheet {
   @Column('varchar')
   file_format: SheetFileFormat;
 
-  @Column('int')
+  @Column('bigint')
   file_size: number;
 
   @Column('varchar')
@@ -59,8 +59,8 @@ export class Sheet {
   @Column('varchar')
   difficulty_level: SheetDifficultyLevel;
 
-  @Column('text', { name: 'tags_json', nullable: true })
-  tags: string | null;
+  @Column('simple-array', { nullable: true })
+  tags: string[];
 
   @Column('boolean', { default: false })
   is_public: boolean;
