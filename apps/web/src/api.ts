@@ -48,7 +48,7 @@ export interface ForumThread {
   comments: ForumComment[];
 }
 
-const API_BASE = 'http://localhost:3001/api/v1';
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api/v1';
 
 async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   try {
