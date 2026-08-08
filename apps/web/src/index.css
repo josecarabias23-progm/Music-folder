@@ -237,10 +237,53 @@
   color: #6b6c76;
 }
 
+.auth-tabs {
+  display: flex;
+  background: #f0f3ff;
+  padding: 4px;
+  border-radius: 14px;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.auth-tab {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #59607a;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-tab:hover {
+  color: #1a237e;
+}
+
+.auth-tab.active {
+  background: #ffffff;
+  color: #1a237e;
+  box-shadow: 0 4px 12px rgba(26, 35, 126, 0.08);
+}
+
+.auth-error-banner {
+  background: #fff0f0;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 16px;
+}
+
 .login-copy h1 {
   margin: 0 0 8px;
   color: #1a237e;
-  font-size: 48px;
+  font-size: 38px;
   line-height: 0.98;
   font-family: 'Playfair Display', serif;
 }
@@ -248,12 +291,24 @@
 .login-copy p {
   margin: 0 0 22px;
   color: #59607a;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .login-form {
   display: grid;
   gap: 16px;
+}
+
+.login-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .login-field-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .login-field {
@@ -267,7 +322,8 @@
   font-weight: 700;
 }
 
-.login-field input {
+.login-field input,
+.auth-select {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid #c9cde2;
@@ -277,7 +333,8 @@
   font: inherit;
 }
 
-.login-field input:focus {
+.login-field input:focus,
+.auth-select:focus {
   outline: none;
   border-color: #1a237e;
   box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.12);
@@ -288,6 +345,29 @@
   padding: 13px 16px;
   border-radius: 12px;
   font-size: 15px;
+  cursor: pointer;
+}
+
+.auth-switch-text {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: #59607a;
+}
+
+.auth-link-button {
+  background: none;
+  border: none;
+  color: #1a237e;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+}
+
+.auth-link-button:hover {
+  color: #3f51b5;
 }
 
 .assistant-widget {

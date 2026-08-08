@@ -204,4 +204,20 @@ export const api = {
       method: 'POST',
     });
   },
+
+  async registerUser(payload: { name: string; email: string; password: string; role?: string; instrument_primary?: string }) {
+    const data = await fetchJSON<{ success: boolean; message?: string; user: any; token?: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return data;
+  },
+
+  async loginUser(payload: { email: string; password: string }) {
+    const data = await fetchJSON<{ success: boolean; message?: string; user: any; token?: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return data;
+  },
 };

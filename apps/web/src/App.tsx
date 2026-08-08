@@ -4,8 +4,11 @@ import { api, ForumThread, InstrumentItem, RehearsalRecord, ScoreItem } from './
 type View = 'inicio' | 'biblioteca' | 'ensayos' | 'instrumentos' | 'foro';
 
 type SessionUser = {
+  id?: string;
   name: string;
   email: string;
+  role?: string;
+  instrument_primary?: string;
 };
 
 type AssistantMessage = {
@@ -59,7 +62,18 @@ export default function App() {
   const [view, setView] = useState<View>('inicio');
   const [menuOpen, setMenuOpen] = useState(false);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(() => getStoredUser());
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [registerForm, setRegisterForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    role: 'Músico / Instrumentista',
+    instrument_primary: 'Violín',
+  });
+  const [authError, setAuthError] = useState<string | null>(null);
+
   const [assistantOpen, setAssistantOpen] = useState(true);
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([
@@ -109,18 +123,94 @@ export default function App() {
   }, []);
 
   // Actions
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     const email = loginForm.email.trim();
-    if (!email) return;
+    if (!email || !loginForm.password) {
+      setAuthError('Por favor, ingresá tu correo y contraseña.');
+      return;
+    }
 
-    const nextUser: SessionUser = {
-      name: email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
-      email,
-    };
+    try {
+      const res = await api.loginUser({ email, password: loginForm.password });
+      if (res && res.user) {
+        const nextUser: SessionUser = {
+          id: res.user.id,
+          name: res.user.name,
+          email: res.user.email,
+          role: res.user.role,
+          instrument_primary: res.user.instrument_primary,
+        };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+        setSessionUser(nextUser);
+      } else {
+        const name = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+        const fallbackUser: SessionUser = { name, email, role: 'Músico' };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fallbackUser));
+        setSessionUser(fallbackUser);
+      }
+    } catch (err) {
+      setAuthError('No se pudo iniciar sesión. Verificá tus datos.');
+    }
+  };
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
-    setSessionUser(nextUser);
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+
+    const name = registerForm.name.trim();
+    const email = registerForm.email.trim();
+    const password = registerForm.password;
+    const confirmPassword = registerForm.confirmPassword;
+
+    if (!name || !email || !password || !confirmPassword) {
+      setAuthError('Por favor, completá todos los campos obligatorios.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setAuthError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setAuthError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    try {
+      const res = await api.registerUser({
+        name,
+        email,
+        password,
+        role: registerForm.role,
+        instrument_primary: registerForm.instrument_primary,
+      });
+
+      if (res && res.user) {
+        const newUser: SessionUser = {
+          id: res.user.id,
+          name: res.user.name,
+          email: res.user.email,
+          role: res.user.role,
+          instrument_primary: res.user.instrument_primary,
+        };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+        setSessionUser(newUser);
+      } else {
+        const fallbackUser: SessionUser = {
+          name,
+          email,
+          role: registerForm.role,
+          instrument_primary: registerForm.instrument_primary,
+        };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(fallbackUser));
+        setSessionUser(fallbackUser);
+      }
+    } catch (err: any) {
+      setAuthError(err?.message || 'Error al guardar el usuario en el registro.');
+    }
   };
 
   const handleLogout = () => {
@@ -237,6 +327,7 @@ export default function App() {
   });
 
   const [heading, subheading] = titles[view];
+  const dynamicHeading = view === 'inicio' ? `Buenos días, ${sessionUser?.name.split(' ')[0] || 'músico'}` : heading;
 
   if (!sessionUser) {
     return (
@@ -250,36 +341,183 @@ export default function App() {
             </div>
           </div>
 
-          <div className="login-copy">
-            <h1>Iniciá sesión</h1>
-            <p>Accedé al panel de biblioteca, ensayos y comunidad musical.</p>
+          <div className="auth-tabs">
+            <button
+              type="button"
+              className={`auth-tab ${authMode === 'login' ? 'active' : ''}`}
+              onClick={() => {
+                setAuthMode('login');
+                setAuthError(null);
+              }}
+            >
+              Iniciar sesión
+            </button>
+            <button
+              type="button"
+              className={`auth-tab ${authMode === 'register' ? 'active' : ''}`}
+              onClick={() => {
+                setAuthMode('register');
+                setAuthError(null);
+              }}
+            >
+              Crear cuenta
+            </button>
           </div>
 
-          <form className="login-form" onSubmit={handleLogin}>
-            <div className="login-field">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                placeholder="valentina@musicfolder.com"
-                value={loginForm.email}
-                onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-              />
-            </div>
+          {authError && <div className="auth-error-banner">⚠️ {authError}</div>}
 
-            <div className="login-field">
-              <label htmlFor="password">Contraseña</label>
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={loginForm.password}
-                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-              />
-            </div>
+          {authMode === 'login' ? (
+            <>
+              <div className="login-copy">
+                <h1>Iniciá sesión</h1>
+                <p>Accedé al panel de biblioteca, ensayos y comunidad musical.</p>
+              </div>
 
-            <button type="submit" className="primary login-submit">Entrar</button>
-          </form>
+              <form className="login-form" onSubmit={handleLogin}>
+                <div className="login-field">
+                  <label htmlFor="login-email">Correo electrónico</label>
+                  <input
+                    id="login-email"
+                    type="email"
+                    placeholder="ejemplo@musicfolder.com"
+                    value={loginForm.email}
+                    onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label htmlFor="login-password">Contraseña</label>
+                  <input
+                    id="login-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                  />
+                </div>
+
+                <button type="submit" className="primary login-submit">
+                  Entrar
+                </button>
+
+                <p className="auth-switch-text">
+                  ¿No tenés una cuenta todavía?{' '}
+                  <button
+                    type="button"
+                    className="auth-link-button"
+                    onClick={() => {
+                      setAuthMode('register');
+                      setAuthError(null);
+                    }}
+                  >
+                    Registrate acá
+                  </button>
+                </p>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="login-copy">
+                <h1>Crear una cuenta</h1>
+                <p>Sumate a la comunidad de Music Folder como músico, director o gestor.</p>
+              </div>
+
+              <form className="login-form" onSubmit={handleRegister}>
+                <div className="login-field">
+                  <label htmlFor="reg-name">Nombre y apellido</label>
+                  <input
+                    id="reg-name"
+                    type="text"
+                    placeholder="Valentina Ruiz"
+                    value={registerForm.name}
+                    onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="login-field">
+                  <label htmlFor="reg-email">Correo electrónico</label>
+                  <input
+                    id="reg-email"
+                    type="email"
+                    placeholder="valentina@musicfolder.com"
+                    value={registerForm.email}
+                    onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                  />
+                </div>
+
+                <div className="login-field-row">
+                  <div className="login-field">
+                    <label htmlFor="reg-role">Rol en la agrupación</label>
+                    <select
+                      id="reg-role"
+                      className="auth-select"
+                      value={registerForm.role}
+                      onChange={(e) => setRegisterForm({ ...registerForm, role: e.target.value })}
+                    >
+                      <option value="Director / Conductor">Director / Conductor</option>
+                      <option value="Músico / Instrumentista">Músico / Instrumentista</option>
+                      <option value="Jefe de cuerda">Jefe de cuerda</option>
+                      <option value="Archivista / Copista">Archivista / Copista</option>
+                      <option value="Estudiante">Estudiante</option>
+                    </select>
+                  </div>
+
+                  <div className="login-field">
+                    <label htmlFor="reg-inst">Instrumento principal</label>
+                    <input
+                      id="reg-inst"
+                      type="text"
+                      placeholder="Violín, Flauta, Piano..."
+                      value={registerForm.instrument_primary}
+                      onChange={(e) => setRegisterForm({ ...registerForm, instrument_primary: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="login-field-row">
+                  <div className="login-field">
+                    <label htmlFor="reg-pass">Contraseña</label>
+                    <input
+                      id="reg-pass"
+                      type="password"
+                      placeholder="Mínimo 6 caracteres"
+                      value={registerForm.password}
+                      onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="login-field">
+                    <label htmlFor="reg-confirm">Confirmar contraseña</label>
+                    <input
+                      id="reg-confirm"
+                      type="password"
+                      placeholder="Repetí la contraseña"
+                      value={registerForm.confirmPassword}
+                      onChange={(e) => setRegisterForm({ ...registerForm, confirmPassword: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="primary login-submit">
+                  Registrarme e Ingresar
+                </button>
+
+                <p className="auth-switch-text">
+                  ¿Ya tenés una cuenta registrada?{' '}
+                  <button
+                    type="button"
+                    className="auth-link-button"
+                    onClick={() => {
+                      setAuthMode('login');
+                      setAuthError(null);
+                    }}
+                  >
+                    Iniciá sesión acá
+                  </button>
+                </p>
+              </form>
+            </>
+          )}
         </div>
       </div>
     );
@@ -309,10 +547,10 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <div className="avatar">V</div>
+          <div className="avatar">{sessionUser.name[0]?.toUpperCase() || 'U'}</div>
           <div>
-            <b>Valentina Ruiz</b>
-            <small>Directora</small>
+            <b>{sessionUser.name}</b>
+            <small>{sessionUser.role || sessionUser.email}</small>
           </div>
         </div>
       </aside>
