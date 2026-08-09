@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: music-folder-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: music_folder
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql:z
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:z
+
   api:
     build:
       context: .
@@ -11,6 +26,14 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=development
+      - DB_TYPE=postgres
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_DB=music_folder
+    depends_on:
+      - postgres
 
   web:
     build:
@@ -23,3 +46,6 @@ services:
       - VITE_API_URL=http://localhost:3001
     depends_on:
       - api
+
+volumes:
+  postgres_data:

@@ -17,7 +17,7 @@ export enum SheetFileFormat {
 
 @Entity('scores')
 export class Sheet {
-  @PrimaryColumn('uuid')
+  @PrimaryColumn('varchar')
   id: string = uuid();
 
   @Column('varchar')
@@ -29,38 +29,38 @@ export class Sheet {
   @Column('varchar', { nullable: true })
   arranger: string | null;
 
-  @Column('uuid')
-  owner_id: string;
+  @Column('varchar', { nullable: true })
+  owner_id: string | null;
 
-  @Column('uuid', { nullable: true })
+  @Column('varchar', { nullable: true })
   organization_id: string | null;
 
-  @Column('varchar')
-  file_url: string;
+  @Column('varchar', { nullable: true })
+  file_url: string | null;
 
-  @Column('varchar')
-  file_format: SheetFileFormat;
+  @Column('varchar', { nullable: true })
+  file_format: SheetFileFormat | string | null;
 
-  @Column('bigint')
-  file_size: number;
+  @Column('bigint', { nullable: true })
+  file_size: number | null;
 
-  @Column('varchar')
-  instrument_role: string;
+  @Column('varchar', { nullable: true })
+  instrument_role: string | null;
 
-  @Column('varchar')
-  key_signature: string;
+  @Column('varchar', { nullable: true })
+  key_signature: string | null;
 
-  @Column('varchar')
-  time_signature: string;
+  @Column('varchar', { nullable: true })
+  time_signature: string | null;
 
   @Column('int', { nullable: true })
   duration_minutes: number | null;
 
-  @Column('varchar')
-  difficulty_level: SheetDifficultyLevel;
+  @Column('varchar', { nullable: true })
+  difficulty_level: SheetDifficultyLevel | string | null;
 
-  @Column('simple-array', { nullable: true })
-  tags: string[];
+  @Column('jsonb', { nullable: true })
+  tags: string[] | null;
 
   @Column('boolean', { default: false })
   is_public: boolean;

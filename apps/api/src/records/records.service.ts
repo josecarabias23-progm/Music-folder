@@ -1,4 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { RehearsalLog } from './entities/rehearsal-log.entity';
 
 export interface RehearsalRecord {
   id: string;
@@ -13,47 +16,70 @@ export interface RehearsalRecord {
 
 @Injectable()
 export class RecordsService {
-  private readonly records: RehearsalRecord[] = [
-    { id: '1', title: 'Ensayo general', type: 'General', date: 'Jueves, 31 de julio', time: '19:00–22:00', venue: 'Auditorio Manuel de Falla', attendeesCount: 46, notes: 'Revisar pasajes de Beethoven Mvt 2' },
-    { id: '2', title: 'Seccionales de cuerdas', type: 'Seccional', date: 'Lunes, 28 de julio', time: '18:00–20:00', venue: 'Sala de Ensayo B', attendeesCount: 18, notes: 'Trabajar afinación de violines II' },
-    { id: '3', title: 'Concierto de cámara', type: 'Concierto', date: 'Sábado, 02 de agosto', time: '20:30–22:30', venue: 'Sala Principal', attendeesCount: 52, notes: 'Código de vestimenta: Frac / Vestido negro' },
-  ];
+  constructor(
+    @InjectRepository(RehearsalLog)
+    private readonly logRepository: Repository<RehearsalLog>,
+  ) {}
 
-  findAll() {
-    return this.records;
+  private mapEntityToRecord(log: RehearsalLog): RehearsalRecord {
+    return {
+      id: log.id,
+      title: log.title,
+      type: log.type || 'General',
+      date: log.date_text || '',
+      time: log.time_text || '',
+      venue: log.venue || '',
+      attendeesCount: log.attendees_count ?? 0,
+      notes: log.notes || '',
+    };
   }
 
-  create(payload: Partial<RehearsalRecord>) {
-    const record: RehearsalRecord = {
-      id: String(Date.now()),
+  async findAll(): Promise<RehearsalRecord[]> {
+    const logs = await this.logRepository.find({
+      order: { created_at: 'DESC' },
+    });
+    return logs.map((l) => this.mapEntityToRecord(l));
+  }
+
+  async create(payload: Partial<RehearsalRecord>): Promise<RehearsalRecord> {
+    const log = this.logRepository.create({
       title: payload.title || 'Nuevo ensayo',
       type: payload.type || 'General',
-      date: payload.date || 'Próxima fecha',
-      time: payload.time || '19:00 - 21:00',
+      date_text: payload.date || 'Próxima fecha',
+      time_text: payload.time || '19:00 - 21:00',
       venue: payload.venue || 'Sala Principal',
-      attendeesCount: payload.attendeesCount || 0,
+      attendees_count: payload.attendeesCount || 0,
       notes: payload.notes || '',
-    };
-    this.records.unshift(record);
-    return record;
+    });
+    const saved = await this.logRepository.save(log);
+    return this.mapEntityToRecord(saved);
   }
 
-  findOne(id: string) {
-    const record = this.records.find((item) => String(item.id) === id);
-    if (!record) throw new NotFoundException(`Record ${id} not found`);
-    return record;
+  async findOne(id: string): Promise<RehearsalRecord> {
+    const log = await this.logRepository.findOne({ where: { id } });
+    if (!log) throw new NotFoundException(`Record ${id} not found`);
+    return this.mapEntityToRecord(log);
   }
 
-  update(id: string, payload: Partial<RehearsalRecord>) {
-    const record = this.findOne(id);
-    Object.assign(record, payload);
-    return record;
+  async update(id: string, payload: Partial<RehearsalRecord>): Promise<RehearsalRecord> {
+    const log = await this.logRepository.findOne({ where: { id } });
+    if (!log) throw new NotFoundException(`Record ${id} not found`);
+
+    if (payload.title) log.title = payload.title;
+    if (payload.type) log.type = payload.type;
+    if (payload.date) log.date_text = payload.date;
+    if (payload.time) log.time_text = payload.time;
+    if (payload.venue) log.venue = payload.venue;
+    if (payload.attendeesCount !== undefined) log.attendees_count = payload.attendeesCount;
+    if (payload.notes !== undefined) log.notes = payload.notes;
+
+    const saved = await this.logRepository.save(log);
+    return this.mapEntityToRecord(saved);
   }
 
-  remove(id: string) {
-    const index = this.records.findIndex((item) => String(item.id) === id);
-    if (index < 0) throw new NotFoundException(`Record ${id} not found`);
-    this.records.splice(index, 1);
+  async remove(id: string): Promise<{ success: boolean }> {
+    const result = await this.logRepository.delete(id);
+    if (!result.affected) throw new NotFoundException(`Record ${id} not found`);
     return { success: true };
   }
 }

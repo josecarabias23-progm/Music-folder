@@ -12,8 +12,8 @@ export enum InstrumentFamilyEnum {
 
 @Entity('instruments')
 export class Instrument {
-  @PrimaryColumn('uuid')
-  id: string = uuid();
+  @PrimaryColumn('varchar')
+  id: string;
 
   @Column('varchar')
   name: string;
@@ -21,7 +21,7 @@ export class Instrument {
   @Column('varchar')
   family: InstrumentFamilyEnum;
 
-  @Column('varchar')
+  @Column('varchar', { nullable: true })
   transposition: string;
 
   @Column('boolean', { default: false })
@@ -39,7 +39,7 @@ export class Instrument {
     highest_note: string;
   };
 
-  @Column('simple-array')
+  @Column('jsonb')
   clef: string[];
 
   @Column('jsonb')
@@ -48,16 +48,16 @@ export class Instrument {
     loudest: string;
   };
 
-  @Column('simple-array')
+  @Column('jsonb')
   techniques: string[];
 
-  @Column('text')
+  @Column('text', { nullable: true })
   maintenance_tips: string;
 
-  @Column('text')
+  @Column('text', { nullable: true })
   historical_info: string;
 
-  @Column('simple-array', { nullable: true })
+  @Column('jsonb', { nullable: true })
   notable_repertoire: string[];
 
   @CreateDateColumn()
