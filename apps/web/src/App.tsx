@@ -51,7 +51,7 @@ const nav: Array<{ id: View; icon: string; label: string }> = [
 ];
 
 const titles: Record<View, [string, string]> = {
-  inicio: ['Buenos días, Valentina', 'Aquí está el pulso de tu agrupación para hoy.'],
+  inicio: ['Buenos días', 'Aquí está el pulso de tu agrupación para hoy.'],
   biblioteca: ['Biblioteca de partituras', 'Organiza, encuentra y comparte el repertorio de tu ensamble.'],
   ensayos: ['Gestión de ensayos', 'Planifica cada encuentro y mantén a tu agrupación sincronizada.'],
   instrumentos: ['Enciclopedia de instrumentos', 'Conoce las voces que dan vida a tu ensamble.'],
@@ -111,7 +111,7 @@ export default function App() {
   // Form inputs
   const [newScore, setNewScore] = useState({ title: '', composer: '', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Intermedio' });
   const [newRecord, setNewRecord] = useState({ title: '', type: 'General', date: '', time: '19:00–21:00', venue: 'Auditorio Manuel de Falla', notes: '' });
-  const [newThread, setNewThread] = useState({ title: '', author: 'Valentina Ruiz', category: 'Repertorio', content: '' });
+  const [newThread, setNewThread] = useState({ title: '', author: '', category: 'Repertorio', content: '' });
   const [commentText, setCommentText] = useState('');
 
   // Initial Load
@@ -278,14 +278,15 @@ export default function App() {
     }
     const updatedThreads = await api.getThreads();
     setThreads(updatedThreads);
-    setNewThread({ title: '', author: 'Valentina Ruiz', category: 'Repertorio', content: '' });
+    setNewThread({ title: '', author: sessionUser?.name || 'Músico', category: 'Repertorio', content: '' });
     setShowNewThreadModal(false);
   };
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedThread || !commentText.trim()) return;
-    const updated = await api.addComment(selectedThread.id, 'Valentina Ruiz', commentText);
+    const authorName = sessionUser?.name || 'Músico';
+    const updated = await api.addComment(selectedThread.id, authorName, commentText);
     if (updated) {
       setSelectedThread(updated);
       setThreads(threads.map((t) => (t.id === updated.id ? updated : t)));
@@ -327,7 +328,8 @@ export default function App() {
   });
 
   const [heading, subheading] = titles[view];
-  const dynamicHeading = view === 'inicio' ? `Buenos días, ${sessionUser?.name.split(' ')[0] || 'músico'}` : heading;
+  const userName = sessionUser?.name ? sessionUser.name.split(' ')[0] : 'músico';
+  const dynamicHeading = view === 'inicio' ? `Buenos días, ${userName}` : heading;
 
   if (!sessionUser) {
     return (
@@ -575,7 +577,7 @@ export default function App() {
         <div className="content">
           <div className="page-heading">
             <div>
-              <h1>{heading}</h1>
+              <h1>{dynamicHeading}</h1>
               <p>{subheading}</p>
             </div>
             {view === 'biblioteca' && (
@@ -650,7 +652,7 @@ export default function App() {
                     <h2>Actividad reciente</h2>
                     <button onClick={() => setView('foro')}>Ver foro →</button>
                   </div>
-                  <p className="activity">✦ Valentina subió <b>Sinfonía n.º 5</b></p>
+                  <p className="activity">✦ {sessionUser.name.split(' ')[0]} subió <b>Sinfonía n.º 5</b></p>
                   <p className="activity">✦ Se agendó el <b>Ensayo General</b></p>
                   <p className="activity">✦ Hay {threads.reduce((acc, t) => acc + (t.comments?.length || 0), 0)} respuestas en la Comunidad</p>
                 </article>
