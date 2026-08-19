@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: music-folder-api
+    runtime: docker
+    region: virginia
+    plan: free
+    repo: https://github.com/josecarabias23-progm/Music-folder.git
+    branch: main
+    dockerfilePath: apps/api/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: music-folder-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: music-folder-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: music-folder-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: music-folder-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: music-folder-db
+          property: database
+
+  - type: web
+    name: music-folder-web
+    runtime: docker
+    region: virginia
+    plan: free
+    repo: https://github.com/josecarabias23-progm/Music-folder.git
+    branch: main
+    dockerfilePath: apps/web/Dockerfile
+
+databases:
+  - name: music-folder-db
+    region: virginia
+    plan: free
+    postgresMajorVersion: "15"
