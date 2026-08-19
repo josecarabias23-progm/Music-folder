@@ -19,15 +19,21 @@ import { RehearsalLog } from './records/entities/rehearsal-log.entity';
 import { ForumThread } from './forums/entities/forum-thread.entity';
 import { ForumComment } from './forums/entities/forum-comment.entity';
 
+const databaseUrl = process.env.DATABASE_URL;
+
 @Module({
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.POSTGRES_HOST || 'localhost',
-      port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-      username: process.env.POSTGRES_USER || 'postgres',
-      password: process.env.POSTGRES_PASSWORD || 'postgrespassword',
-      database: process.env.POSTGRES_DB || 'music_folder',
+      ...(databaseUrl
+        ? { url: databaseUrl }
+        : {
+            host: process.env.POSTGRES_HOST || 'localhost',
+            port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+            username: process.env.POSTGRES_USER || 'postgres',
+            password: process.env.POSTGRES_PASSWORD || 'postgrespassword',
+            database: process.env.POSTGRES_DB || 'music_folder',
+          }),
       entities: [User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment],
       synchronize: false,
     }),
