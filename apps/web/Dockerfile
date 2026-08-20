@@ -13,6 +13,10 @@ RUN npm ci
 # Copiar el resto del código fuente
 COPY . .
 
+# Compilar la aplicación para producción
+RUN npm --workspace apps/web run build
+
 EXPOSE 5173
 
-CMD ["npm", "--workspace", "apps/web", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
+# Servir la versión compilada en modo preview
+CMD ["npm", "--workspace", "apps/web", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]
