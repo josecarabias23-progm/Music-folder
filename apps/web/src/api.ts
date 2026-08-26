@@ -48,6 +48,23 @@ export interface ForumThread {
   comments: ForumComment[];
 }
 
+export interface NotificationItem {
+  id: string;
+  type: 'rehearsal_scheduled' | 'sheet_uploaded' | 'attendance_marked';
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  targetId?: string;
+  metadata?: {
+    author?: string;
+    venue?: string;
+    date?: string;
+    ensemble?: string;
+    status?: 'presente' | 'ausente' | 'justificado';
+  };
+}
+
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3001') + '/api/v1';
 
 async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
@@ -83,7 +100,7 @@ const fallbackInstruments: InstrumentItem[] = [
 ];
 
 const fallbackRecords: RehearsalRecord[] = [
-  { id: '1', title: 'Ensayo general', type: 'General', date: 'Jueves, 31 de julio', time: '19:00–22:00', venue: 'Auditorio Manuel de Falla', attendeesCount: 46, notes: 'Revisar pasajes de Beethoven Mvt 2' },
+  { id: '1', title: 'Ensayo General - Sinfonía N.º 5 (Beethoven)', type: 'General', date: 'Mañana a las 10:00 AM', time: '10:00–13:00', venue: 'Sala Principal', attendeesCount: 46, notes: 'Revisar pasajes de Beethoven Mvt 2' },
   { id: '2', title: 'Seccionales de cuerdas', type: 'Seccional', date: 'Lunes, 28 de julio', time: '18:00–20:00', venue: 'Sala de Ensayo B', attendeesCount: 18, notes: 'Trabajar afinación de violines II' },
   { id: '3', title: 'Concierto de cámara', type: 'Concierto', date: 'Sábado, 02 de agosto', time: '20:30–22:30', venue: 'Sala Principal', attendeesCount: 52, notes: 'Código de vestimenta: Frac / Vestido negro' },
 ];
@@ -120,6 +137,49 @@ const fallbackThreads: ForumThread[] = [
     category: 'Recursos',
     likes: 24,
     comments: [],
+  },
+];
+
+const fallbackNotifications: NotificationItem[] = [
+  {
+    id: 'notif-1',
+    type: 'rehearsal_scheduled',
+    title: 'Ensayo General - Sinfonía N.º 5 (Beethoven)',
+    message: 'Mañana a las 10:00 AM - Sala Principal',
+    timestamp: 'Hace 10 min',
+    read: false,
+    targetId: '1',
+    metadata: {
+      date: 'Mañana a las 10:00 AM',
+      venue: 'Sala Principal',
+      author: 'Dirección Musical',
+    },
+  },
+  {
+    id: 'notif-2',
+    type: 'sheet_uploaded',
+    title: 'Danzón n.º 2 - Arturo Márquez',
+    message: 'Partituras actualizadas. Oboe, Violín I',
+    timestamp: 'Hace 2 horas',
+    read: false,
+    targetId: '2',
+    metadata: {
+      ensemble: 'Orquesta Completa',
+      author: 'Sofía Rossi',
+    },
+  },
+  {
+    id: 'notif-3',
+    type: 'attendance_marked',
+    title: 'Asistencia Registrada: Presente',
+    message: 'Ensayo Parcial - Sección de Vientos',
+    timestamp: 'Ayer',
+    read: true,
+    targetId: '2',
+    metadata: {
+      status: 'presente',
+      date: 'Ayer',
+    },
   },
 ];
 
@@ -203,6 +263,21 @@ export const api = {
     return await fetchJSON<ForumThread>(`/forums/threads/${threadId}/like`, {
       method: 'POST',
     });
+  },
+
+  async getNotifications(): Promise<NotificationItem[]> {
+    const data = await fetchJSON<NotificationItem[]>('/notifications');
+    return data || fallbackNotifications;
+  },
+
+  async markNotificationAsRead(id: string): Promise<boolean> {
+    const res = await fetchJSON<{ success: boolean }>(`/notifications/${id}/read`, { method: 'PATCH' });
+    return res ? res.success : true;
+  },
+
+  async markAllNotificationsAsRead(): Promise<boolean> {
+    const res = await fetchJSON<{ success: boolean }>('/notifications/read-all', { method: 'PATCH' });
+    return res ? res.success : true;
   },
 
   async registerUser(payload: { name: string; email: string; password: string; role?: string; instrument_primary?: string }) {

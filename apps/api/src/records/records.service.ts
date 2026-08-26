@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { RehearsalLog } from './entities/rehearsal-log.entity';
+import { RehearsalScheduledEvent } from '../notifications/events/rehearsal-scheduled.event';
+import { AttendanceMarkedEvent } from '../notifications/events/attendance-marked.event';
 
 export interface RehearsalRecord {
   id: string;
@@ -19,6 +22,7 @@ export class RecordsService {
   constructor(
     @InjectRepository(RehearsalLog)
     private readonly logRepository: Repository<RehearsalLog>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private mapEntityToRecord(log: RehearsalLog): RehearsalRecord {
@@ -52,7 +56,43 @@ export class RecordsService {
       notes: payload.notes || '',
     });
     const saved = await this.logRepository.save(log);
-    return this.mapEntityToRecord(saved);
+    const record = this.mapEntityToRecord(saved);
+
+    // Emit Event for Notifications
+    this.eventEmitter.emit(
+      'rehearsal.scheduled',
+      new RehearsalScheduledEvent(
+        record.id,
+        record.title,
+        record.date,
+        record.time,
+        record.venue,
+        'Dirección Musical',
+      ),
+    );
+
+    return record;
+  }
+
+  async recordAttendance(
+    id: string,
+    userId: string,
+    userName: string,
+    status: 'presente' | 'ausente' | 'justificado',
+  ) {
+    const record = await this.findOne(id);
+    this.eventEmitter.emit(
+      'attendance.marked',
+      new AttendanceMarkedEvent(
+        record.id,
+        record.title,
+        userId,
+        userName,
+        status,
+        record.date,
+      ),
+    );
+    return { success: true, status, rehearsal: record.title };
   }
 
   async findOne(id: string): Promise<RehearsalRecord> {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, ForumThread, InstrumentItem, RehearsalRecord, ScoreItem } from './api';
+import { api, ForumThread, InstrumentItem, NotificationItem, RehearsalRecord, ScoreItem } from './api';
 
 type View = 'inicio' | 'biblioteca' | 'ensayos' | 'instrumentos' | 'foro';
 
@@ -38,8 +38,9 @@ function getAssistantReply(input: string): string {
   if (text.includes('partitura') || text.includes('biblioteca')) return 'La biblioteca está organizada por repertorio y categoría. Puedo ayudarte a encontrar una obra por estilo o ensamble.';
   if (text.includes('instrumento')) return 'Te recomiendo revisar la ficha del instrumento en la sección de instrumentos para consultar clave, transposición y uso.';
   if (text.includes('foro')) return 'En la comunidad puedes abrir una nueva discusión o responder a una publicación existente para coordinar ideas.';
+  if (text.includes('notificacion') || text.includes('notificación')) return 'Puedes consultar el centro de notificaciones en la campana del menú superior para ver avisos de partituras, ensayos y asistencias.';
 
-  return 'Puedo ayudarte a revisar repertorio, ensayos y coordinación del grupo. ¿Qué quieres consultar?';
+  return 'Puedo ayudarte a revisar repertorio, ensayos, asistencias y coordinación del grupo. ¿Qué quieres consultar?';
 }
 
 const nav: Array<{ id: View; icon: string; label: string }> = [
@@ -74,13 +75,13 @@ export default function App() {
   });
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const [assistantOpen, setAssistantOpen] = useState(true);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantInput, setAssistantInput] = useState('');
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([
     {
       id: 1,
       role: 'assistant',
-      text: 'Hola, soy tu asistente de Music Folder. Puedo ayudarte con repertorio, ensayos y coordinación del grupo.',
+      text: 'Hola, soy tu asistente de Music Folder. Puedo ayudarte con repertorio, ensayos, notificaciones y coordinación del grupo.',
     },
   ]);
 
@@ -89,6 +90,12 @@ export default function App() {
   const [instruments, setInstruments] = useState<InstrumentItem[]>([]);
   const [records, setRecords] = useState<RehearsalRecord[]>([]);
   const [threads, setThreads] = useState<ForumThread[]>([]);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifFilter, setNotifFilter] = useState<'todas' | 'ensayos' | 'partituras' | 'asistencia'>('todas');
+  const [toastMessage, setToastMessage] = useState<{ title: string; body: string; icon: string } | null>(null);
 
   // Filter states
   const [scoreFilter, setScoreFilter] = useState('Todos');
@@ -120,7 +127,55 @@ export default function App() {
     api.getInstruments().then(setInstruments);
     api.getRecords().then(setRecords);
     api.getThreads().then(setThreads);
+    api.getNotifications().then(setNotifications);
   }, []);
+
+  // Toast Auto-Hide
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const handleMarkAsRead = async (id: string) => {
+    await api.markNotificationAsRead(id);
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  };
+
+  const handleMarkAllAsRead = async () => {
+    await api.markAllNotificationsAsRead();
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const handleRecordAttendance = (status: 'presente' | 'ausente' | 'justificado') => {
+    if (!selectedRecord) return;
+
+    const notif: NotificationItem = {
+      id: 'notif-' + Date.now(),
+      type: 'attendance_marked',
+      title: `Asistencia Registrada: ${status.toUpperCase()}`,
+      message: selectedRecord.title,
+      timestamp: 'Hace un momento',
+      read: false,
+      targetId: selectedRecord.id,
+      metadata: {
+        status,
+        date: selectedRecord.date,
+        author: sessionUser?.name || 'Músico',
+      },
+    };
+
+    setNotifications((prev) => [notif, ...prev]);
+    setSelectedRecord(null);
+    setToastMessage({
+      title: '✅ Asistencia Registrada',
+      body: `Confirmaste asistencia como ${status} en "${selectedRecord.title}". Notificación enviada.`,
+      icon: '✓',
+    });
+  };
 
   // Actions
   const handleLogin = async (e: React.FormEvent) => {
@@ -250,6 +305,27 @@ export default function App() {
     if (!newScore.title) return;
     const added = await api.createScore(newScore as any);
     setScores([added, ...scores]);
+
+    const notif: NotificationItem = {
+      id: 'notif-' + Date.now(),
+      type: 'sheet_uploaded',
+      title: `${newScore.title} - ${newScore.composer || 'Arturo Márquez'}`,
+      message: `Partituras actualizadas. ${newScore.ensemble}`,
+      timestamp: 'Hace un momento',
+      read: false,
+      targetId: added.id,
+      metadata: {
+        ensemble: newScore.ensemble,
+        author: sessionUser?.name || 'Sofía Rossi',
+      },
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    setToastMessage({
+      title: '🎼 Partitura Publicada',
+      body: `Notificación enviada a la agrupación sobre "${newScore.title}".`,
+      icon: '🎼',
+    });
+
     setNewScore({ title: '', composer: '', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Intermedio' });
     setShowUploadScoreModal(false);
   };
@@ -265,6 +341,28 @@ export default function App() {
     if (!newRecord.title) return;
     const added = await api.createRecord(newRecord);
     setRecords([added, ...records]);
+
+    const notif: NotificationItem = {
+      id: 'notif-' + Date.now(),
+      type: 'rehearsal_scheduled',
+      title: `${newRecord.title}`,
+      message: `${newRecord.date || 'Mañana a las 10:00 AM'} - ${newRecord.venue}`,
+      timestamp: 'Hace un momento',
+      read: false,
+      targetId: added.id,
+      metadata: {
+        date: `${newRecord.date || 'Próxima fecha'} · ${newRecord.time}`,
+        venue: newRecord.venue,
+        author: sessionUser?.name || 'Dirección',
+      },
+    };
+    setNotifications((prev) => [notif, ...prev]);
+    setToastMessage({
+      title: '🗓️ Ensayo Agendado',
+      body: `Se ha notificado el ensayo "${newRecord.title}" a todos los integrantes.`,
+      icon: '🗓️',
+    });
+
     setNewRecord({ title: '', type: 'General', date: '', time: '19:00–21:00', venue: 'Auditorio Manuel de Falla', notes: '' });
     setShowNewRecordModal(false);
   };
@@ -325,6 +423,13 @@ export default function App() {
   const filteredThreads = threads.filter((t) => {
     if (forumFilter === 'Todos los temas') return true;
     return t.category === forumFilter;
+  });
+
+  const filteredNotifications = notifications.filter((n) => {
+    if (notifFilter === 'ensayos') return n.type === 'rehearsal_scheduled';
+    if (notifFilter === 'partituras') return n.type === 'sheet_uploaded';
+    if (notifFilter === 'asistencia') return n.type === 'attendance_marked';
+    return true;
   });
 
   const [heading, subheading] = titles[view];
@@ -568,6 +673,102 @@ export default function App() {
           </div>
           <div className="header-actions">
             <button title="Búsqueda rápida">⌕</button>
+
+            {/* Stitch UI Notification Bell Dropdown */}
+            <div className="notification-bell-wrapper">
+              <button
+                className={`notification-bell-btn ${unreadCount > 0 ? 'has-unread' : ''}`}
+                title="Notificaciones"
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+              >
+                🔔
+                {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+              </button>
+
+              {notificationsOpen && (
+                <div className="notification-popover">
+                  <div className="notif-header">
+                    <div>
+                      <strong>Notificaciones</strong>
+                      <span className="notif-count-pill">{unreadCount} sin leer</span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button className="notif-read-all-btn" onClick={handleMarkAllAsRead}>
+                        Marcar todo como leído
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="notif-filters">
+                    <button
+                      className={notifFilter === 'todas' ? 'active' : ''}
+                      onClick={() => setNotifFilter('todas')}
+                    >
+                      Todas
+                    </button>
+                    <button
+                      className={notifFilter === 'ensayos' ? 'active' : ''}
+                      onClick={() => setNotifFilter('ensayos')}
+                    >
+                      Ensayos
+                    </button>
+                    <button
+                      className={notifFilter === 'partituras' ? 'active' : ''}
+                      onClick={() => setNotifFilter('partituras')}
+                    >
+                      Partituras
+                    </button>
+                    <button
+                      className={notifFilter === 'asistencia' ? 'active' : ''}
+                      onClick={() => setNotifFilter('asistencia')}
+                    >
+                      Asistencia
+                    </button>
+                  </div>
+
+                  <div className="notif-list">
+                    {filteredNotifications.length === 0 ? (
+                      <div className="notif-empty">
+                        <span>🔕</span>
+                        <p>Sin notificaciones en esta categoría</p>
+                      </div>
+                    ) : (
+                      filteredNotifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`notif-item ${notif.read ? 'read' : 'unread'} notif-${notif.type}`}
+                          onClick={() => handleMarkAsRead(notif.id)}
+                        >
+                          <div className="notif-icon">
+                            {notif.type === 'rehearsal_scheduled' && '🗓️'}
+                            {notif.type === 'sheet_uploaded' && '🎼'}
+                            {notif.type === 'attendance_marked' && '✅'}
+                          </div>
+                          <div className="notif-content">
+                            <div className="notif-item-top">
+                              <span className={`notif-tag tag-${notif.type}`}>
+                                {notif.type === 'rehearsal_scheduled' && 'Ensayo'}
+                                {notif.type === 'sheet_uploaded' && 'Partitura'}
+                                {notif.type === 'attendance_marked' && 'Asistencia'}
+                              </span>
+                              <span className="notif-time">{notif.timestamp}</span>
+                            </div>
+                            <strong>{notif.title}</strong>
+                            <p>{notif.message}</p>
+                          </div>
+                          {!notif.read && <div className="unread-dot" title="No leída" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="notif-footer">
+                    <small>Sincronizado con MCP Stitch & Music Folder API</small>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button title="Asistente virtual" onClick={() => setAssistantOpen((open) => !open)}>✦</button>
             <button title="Cerrar sesión" onClick={handleLogout}>⇥</button>
             <div className="avatar">{sessionUser.name[0]?.toUpperCase() || 'V'}</div>
@@ -1137,7 +1338,7 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL DETALLE: ENSAYO */}
+      {/* MODAL DETALLE: ENSAYO CON REGISTRO DE ASISTENCIA */}
       {selectedRecord && (
         <div className="modal-overlay" onClick={() => setSelectedRecord(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -1157,13 +1358,39 @@ export default function App() {
                   <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#454652' }}>{selectedRecord.notes}</p>
                 </div>
               )}
+
+              <div style={{ marginTop: '16px', padding: '14px', background: '#f4f5fd', borderRadius: '12px', border: '1px solid #e0e2e8' }}>
+                <strong style={{ color: '#1a237e', display: 'block', marginBottom: '8px', fontSize: '13px' }}>
+                  Registrar Asistencia & Notificar a la Agrupación
+                </strong>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    className="primary"
+                    style={{ background: '#2e7d32', padding: '8px 12px', fontSize: '13px' }}
+                    onClick={() => handleRecordAttendance('presente')}
+                  >
+                    ✓ Confirmar Presente
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{ padding: '8px 12px', fontSize: '13px' }}
+                    onClick={() => handleRecordAttendance('justificado')}
+                  >
+                    📝 Justificado
+                  </button>
+                  <button
+                    className="btn-danger"
+                    style={{ padding: '8px 12px', fontSize: '13px' }}
+                    onClick={() => handleRecordAttendance('ausente')}
+                  >
+                    ✕ Ausente
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="modal-footer">
               <button className="btn-secondary" onClick={() => setSelectedRecord(null)}>
                 Cerrar
-              </button>
-              <button className="primary" onClick={() => alert('Asistencia confirmada para este ensayo')}>
-                Confirmar mi Asistencia ✓
               </button>
             </div>
           </div>
@@ -1221,6 +1448,18 @@ export default function App() {
               </form>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* STITCH UI TOAST NOTIFICATION */}
+      {toastMessage && (
+        <div className="toast-notification">
+          <span className="toast-icon">{toastMessage.icon}</span>
+          <div className="toast-body">
+            <strong>{toastMessage.title}</strong>
+            <p>{toastMessage.body}</p>
+          </div>
+          <button className="toast-close" onClick={() => setToastMessage(null)}>Cerrar</button>
         </div>
       )}
     </div>
