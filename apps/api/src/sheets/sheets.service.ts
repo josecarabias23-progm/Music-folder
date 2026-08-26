@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Sheet } from './entities/sheet.entity';
+import { SheetUploadedEvent } from '../notifications/events/sheet-uploaded.event';
 
 export interface ScoreItem {
   id: string;
@@ -20,6 +22,7 @@ export class SheetsService {
   constructor(
     @InjectRepository(Sheet)
     private readonly sheetRepository: Repository<Sheet>,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private mapSheetToScoreItem(sheet: Sheet): ScoreItem {
@@ -57,7 +60,21 @@ export class SheetsService {
       is_public: payload.isFavorite || false,
     });
     const saved = await this.sheetRepository.save(sheet);
-    return this.mapSheetToScoreItem(saved);
+    const score = this.mapSheetToScoreItem(saved);
+
+    // Emit Event for Notifications
+    this.eventEmitter.emit(
+      'sheet.uploaded',
+      new SheetUploadedEvent(
+        score.id,
+        score.title,
+        score.composer,
+        score.ensemble,
+        score.owner,
+      ),
+    );
+
+    return score;
   }
 
   async findOne(id: string): Promise<ScoreItem> {
