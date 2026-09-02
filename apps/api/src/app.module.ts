@@ -39,7 +39,7 @@ const databaseUrl = process.env.DATABASE_URL;
             database: process.env.POSTGRES_DB || 'music_folder',
           }),
       entities: [User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification],
-      synchronize: false,
+      synchronize: true,
     }),
     TypeOrmModule.forFeature([User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification]),
     AuthModule,
