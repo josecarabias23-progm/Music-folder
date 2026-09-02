@@ -18,6 +18,7 @@ type AssistantMessage = {
 };
 
 const STORAGE_KEY = 'music-folder-session';
+const NOTIFICATIONS_STORAGE_KEY = 'music-folder-notifications';
 
 function getStoredUser(): SessionUser | null {
   if (typeof window === 'undefined') return null;
@@ -28,6 +29,19 @@ function getStoredUser(): SessionUser | null {
     return JSON.parse(raw) as SessionUser;
   } catch {
     return null;
+  }
+}
+
+function getStoredNotifications(): NotificationItem[] {
+  if (typeof window === 'undefined') return [];
+  const raw = window.localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as NotificationItem[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
   }
 }
 
@@ -92,7 +106,7 @@ export default function App() {
   const [threads, setThreads] = useState<ForumThread[]>([]);
 
   // Notifications state
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => getStoredNotifications());
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<'todas' | 'ensayos' | 'partituras' | 'asistencia'>('todas');
   const [toastMessage, setToastMessage] = useState<{ title: string; body: string; icon: string } | null>(null);
@@ -127,8 +141,23 @@ export default function App() {
     api.getInstruments().then(setInstruments);
     api.getRecords().then(setRecords);
     api.getThreads().then(setThreads);
-    api.getNotifications().then(setNotifications);
+
+    const storedNotifications = getStoredNotifications();
+    if (storedNotifications.length > 0) {
+      setNotifications(storedNotifications);
+      return;
+    }
+
+    api.getNotifications().then((data) => {
+      if (data && data.length > 0) setNotifications(data);
+    });
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+    }
+  }, [notifications]);
 
   // Toast Auto-Hide
   useEffect(() => {
