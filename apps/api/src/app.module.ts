@@ -8,6 +8,7 @@ import { ForumsController } from './forums/forums.controller';
 import { ForumsService } from './forums/forums.service';
 import { InstrumentsController } from './instruments/instruments.controller';
 import { InstrumentsService } from './instruments/instruments.service';
+import { InstrumentsSeedService } from './instruments/seed.service';
 import { RecordsController } from './records/records.controller';
 import { RecordsService } from './records/records.service';
 import { SheetsController } from './sheets/sheets.controller';
@@ -56,6 +57,7 @@ const databaseUrl = process.env.DATABASE_URL;
     AppService,
     SheetsService,
     InstrumentsService,
+    InstrumentsSeedService,
     RecordsService,
     ForumsService,
   ],
