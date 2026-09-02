@@ -179,6 +179,14 @@ export default function App() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  const handleDeleteNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
   const handleRecordAttendance = (status: 'presente' | 'ausente' | 'justificado') => {
     if (!selectedRecord) return;
 
@@ -721,11 +729,18 @@ export default function App() {
                       <strong>Notificaciones</strong>
                       <span className="notif-count-pill">{unreadCount} sin leer</span>
                     </div>
-                    {unreadCount > 0 && (
-                      <button className="notif-read-all-btn" onClick={handleMarkAllAsRead}>
-                        Marcar todo como leído
-                      </button>
-                    )}
+                    <div className="notif-header-actions">
+                      {unreadCount > 0 && (
+                        <button className="notif-read-all-btn" onClick={handleMarkAllAsRead}>
+                          Marcar todo como leído
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button className="notif-clear-all-btn" onClick={handleClearAllNotifications}>
+                          Vaciar todas
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="notif-filters">
@@ -785,7 +800,19 @@ export default function App() {
                             <strong>{notif.title}</strong>
                             <p>{notif.message}</p>
                           </div>
-                          {!notif.read && <div className="unread-dot" title="No leída" />}
+                          <div className="notif-actions">
+                            <button
+                              className="notif-delete-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteNotification(notif.id);
+                              }}
+                              aria-label={`Eliminar notificación ${notif.title}`}
+                            >
+                              Eliminar
+                            </button>
+                            {!notif.read && <div className="unread-dot" title="No leída" />}
+                          </div>
                         </div>
                       ))
                     )}
