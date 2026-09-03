@@ -96,6 +96,38 @@ export class SheetsService {
     return this.mapSheetToScoreItem(saved);
   }
 
+  async attachFile(id: string, filePath: string, size: number, format: string): Promise<ScoreItem> {
+    const sheet = await this.sheetRepository.findOne({ where: { id } });
+    if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
+
+    sheet.file_url = filePath;
+    sheet.file_size = size;
+    sheet.file_format = format;
+
+    const saved = await this.sheetRepository.save(sheet);
+
+    // Emit event for notifications
+    const score = this.mapSheetToScoreItem(saved);
+    this.eventEmitter.emit(
+      'sheet.uploaded',
+      new SheetUploadedEvent(
+        score.id,
+        score.title,
+        score.composer,
+        score.ensemble,
+        score.owner,
+      ),
+    );
+
+    return score;
+  }
+
+  async getFilePath(id: string): Promise<string | null> {
+    const sheet = await this.sheetRepository.findOne({ where: { id } });
+    if (!sheet) return null;
+    return sheet.file_url || null;
+  }
+
   async remove(id: string): Promise<{ success: boolean }> {
     const result = await this.sheetRepository.delete(id);
     if (!result.affected) throw new NotFoundException(`Sheet ${id} not found`);

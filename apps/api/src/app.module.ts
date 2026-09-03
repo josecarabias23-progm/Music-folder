@@ -12,7 +12,10 @@ import { InstrumentsSeedService } from './instruments/seed.service';
 import { RecordsController } from './records/records.controller';
 import { RecordsService } from './records/records.service';
 import { SheetsController } from './sheets/sheets.controller';
+import { PublicScoresController } from './public-scores/public-scores.controller';
 import { SheetsService } from './sheets/sheets.service';
+import { PublicScoresService } from './public-scores/public-scores.service';
+import { LocalStorageService } from './storage/storage.service';
 import { NotificationsModule } from './notifications/notifications.module';
 
 import { User } from './auth/entities/user.entity';
@@ -49,6 +52,7 @@ const databaseUrl = process.env.DATABASE_URL;
   controllers: [
     AppController,
     SheetsController,
+    PublicScoresController,
     InstrumentsController,
     RecordsController,
     ForumsController,
@@ -56,6 +60,8 @@ const databaseUrl = process.env.DATABASE_URL;
   providers: [
     AppService,
     SheetsService,
+    LocalStorageService,
+    PublicScoresService,
     InstrumentsService,
     InstrumentsSeedService,
     RecordsService,
