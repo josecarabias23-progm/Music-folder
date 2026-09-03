@@ -114,6 +114,9 @@ export default function App() {
   // Filter states
   const [scoreFilter, setScoreFilter] = useState('Todos');
   const [scoreSearch, setScoreSearch] = useState('');
+  const [showPublicExplorer, setShowPublicExplorer] = useState(false);
+  const [publicQuery, setPublicQuery] = useState('');
+  const [publicResults, setPublicResults] = useState<any[]>([]);
   const [instFilter, setInstFilter] = useState('Todos');
   const [instSearch, setInstSearch] = useState('');
   const [forumFilter, setForumFilter] = useState('Todos los temas');
@@ -131,6 +134,7 @@ export default function App() {
 
   // Form inputs
   const [newScore, setNewScore] = useState({ title: '', composer: '', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Intermedio' });
+  const [newScoreFile, setNewScoreFile] = useState<File | null>(null);
   const [newRecord, setNewRecord] = useState({ title: '', type: 'General', date: '', time: '19:00–21:00', venue: 'Auditorio Manuel de Falla', notes: '' });
   const [newThread, setNewThread] = useState({ title: '', author: '', category: 'Repertorio', content: '' });
   const [commentText, setCommentText] = useState('');
@@ -341,6 +345,10 @@ export default function App() {
     e.preventDefault();
     if (!newScore.title) return;
     const added = await api.createScore(newScore as any);
+    // If a PDF file was selected, upload it
+    if (newScoreFile && added?.id) {
+      await api.uploadScoreFile(added.id, newScoreFile);
+    }
     setScores([added, ...scores]);
 
     const notif: NotificationItem = {
@@ -364,6 +372,7 @@ export default function App() {
     });
 
     setNewScore({ title: '', composer: '', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Intermedio' });
+    setNewScoreFile(null);
     setShowUploadScoreModal(false);
   };
 
@@ -842,6 +851,11 @@ export default function App() {
                 + Subir partitura
               </button>
             )}
+              {view === 'biblioteca' && (
+                <button className="primary" style={{ marginLeft: 8 }} onClick={() => setShowPublicExplorer((s) => !s)}>
+                  Explorar Dominio Público
+                </button>
+              )}
             {view === 'ensayos' && (
               <button className="primary" onClick={() => setShowNewRecordModal(true)}>
                 + Nuevo ensayo
@@ -920,6 +934,42 @@ export default function App() {
           {/* VISTA: BIBLIOTECA */}
           {view === 'biblioteca' && (
             <>
+              {showPublicExplorer && (
+                <div style={{ margin: '16px 0', padding: 12, border: '1px solid #eee', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input placeholder="Buscar en dominio público (Beethoven, orquesta...)" value={publicQuery} onChange={(e) => setPublicQuery(e.target.value)} />
+                    <button className="primary" onClick={async () => {
+                      const res = await api.searchPublicScores(publicQuery || 'orchestra');
+                      setPublicResults(res || []);
+                    }}>Buscar</button>
+                  </div>
+                  <div style={{ marginTop: 12 }}>
+                    {publicResults.length === 0 ? <small>No hay resultados aún</small> : (
+                      <div>
+                        {publicResults.map((r: any) => (
+                          <div key={r.sourceUrl} style={{ padding: 8, borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <strong>{r.title}</strong>
+                              <div style={{ fontSize: 13, color: '#666' }}>{r.composer || ''} · {r.instrumentation || ''}</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button onClick={async (e) => {
+                                e.stopPropagation();
+                                const imported = await api.importPublicScore({ title: r.title, composer: r.composer, pdfUrl: r.pdfUrl, sourceUrl: r.sourceUrl, instrumentation: r.instrumentation });
+                                if (imported) {
+                                  setScores((prev) => [imported, ...prev]);
+                                  setToastMessage({ title: 'Importada', body: `${r.title} importada a tu biblioteca`, icon: '🎼' });
+                                }
+                              }}>Importar a mi agrupación</button>
+                              <button onClick={(e) => { e.stopPropagation(); window.open(r.pdfUrl || r.sourceUrl, '_blank'); }}>Ver PDF</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="filters">
                 {['Todos', 'Orquesta', 'Cámara', 'Favoritos'].map((cat) => (
                   <button
@@ -951,7 +1001,27 @@ export default function App() {
                       <p>{score.composer}</p>
                       <span>{score.ensemble}</span>
                     </div>
-                    <button className="more" title="Ver detalles">•••</button>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button className="more" title="Ver detalles">•••</button>
+                      <button
+                        title="Descargar PDF"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(api.getScoreDownloadUrl(score.id), '_blank');
+                        }}
+                      >
+                        ⬇
+                      </button>
+                      <button
+                        title="Ver partitura"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`${api.getScoreDownloadUrl(score.id)}?inline=1`, '_blank');
+                        }}
+                      >
+                        👁
+                      </button>
+                    </div>
                   </article>
                 ))}
                 {filteredScores.length === 0 && (
@@ -1195,6 +1265,14 @@ export default function App() {
                     </select>
                   </div>
                 </div>
+                <div className="form-group">
+                  <label>Archivo PDF (opcional)</label>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setNewScoreFile((e.target as HTMLInputElement).files?.[0] || null)}
+                  />
+                </div>
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={() => setShowUploadScoreModal(false)}>
@@ -1357,8 +1435,18 @@ export default function App() {
               <button className="btn-danger" onClick={() => handleDeleteScore(selectedScore.id)}>
                 Eliminar
               </button>
-              <button className="primary" onClick={() => alert(`Descargando partitura de ${selectedScore.title}...`)}>
+              <button
+                className="primary"
+                onClick={() => window.open(api.getScoreDownloadUrl(selectedScore.id), '_blank')}
+              >
                 Descargar PDF ⬇
+              </button>
+              <button
+                className="primary"
+                onClick={() => window.open(`${api.getScoreDownloadUrl(selectedScore.id)}?inline=1`, '_blank')}
+                style={{ marginLeft: 8 }}
+              >
+                Ver partitura 👁
               </button>
             </div>
           </div>

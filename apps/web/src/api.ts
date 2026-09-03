@@ -208,6 +208,48 @@ export const api = {
     return res.ok;
   },
 
+  async uploadScoreFile(id: string, file: File): Promise<any | null> {
+    try {
+      const fd = new FormData();
+      fd.append('file', file, file.name);
+      const res = await fetch(`${API_BASE}/sheets/${id}/upload`, {
+        method: 'POST',
+        body: fd,
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      return null;
+    }
+  },
+
+  getScoreDownloadUrl(id: string) {
+    return `${API_BASE}/sheets/${id}/download`;
+  },
+  async searchPublicScores(q: string) {
+    try {
+      const res = await fetch(`${API_BASE}/public-scores/search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) return null;
+      return (await res.json()) as any[];
+    } catch (err) {
+      return null;
+    }
+  },
+
+  async importPublicScore(payload: { title: string; composer?: string; pdfUrl?: string; sourceUrl?: string; instrumentation?: string }) {
+    try {
+      const res = await fetch(`${API_BASE}/public-scores/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      return null;
+    }
+  },
+
   async getInstruments(): Promise<InstrumentItem[]> {
     const data = await fetchJSON<InstrumentItem[]>('/instruments');
     return data || fallbackInstruments;
