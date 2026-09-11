@@ -1017,8 +1017,9 @@ export default function App() {
                                 handleDeleteNotification(notif.id);
                               }}
                               aria-label={`Eliminar notificación ${notif.title}`}
+                              title={`Eliminar notificación ${notif.title}`}
                             >
-                              Eliminar
+                              ✕
                             </button>
                             {!notif.read && <div className="unread-dot" title="No leída" />}
                           </div>
