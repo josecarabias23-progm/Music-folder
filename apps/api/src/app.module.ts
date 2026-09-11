@@ -17,6 +17,7 @@ import { SheetsService } from './sheets/sheets.service';
 import { PublicScoresService } from './public-scores/public-scores.service';
 import { LocalStorageService } from './storage/storage.service';
 import { NotificationsModule } from './notifications/notifications.module';
+import { GroupsModule } from './groups/groups.module';
 
 import { User } from './auth/entities/user.entity';
 import { Instrument } from './instruments/entities/instrument.entity';
@@ -25,6 +26,11 @@ import { RehearsalLog } from './records/entities/rehearsal-log.entity';
 import { ForumThread } from './forums/entities/forum-thread.entity';
 import { ForumComment } from './forums/entities/forum-comment.entity';
 import { Notification } from './notifications/entities/notification.entity';
+import { Group } from './groups/entities/group.entity';
+import { GroupMember } from './groups/entities/group-member.entity';
+import { GroupLibraryItem } from './groups/entities/group-library-item.entity';
+import { GroupRehearsal } from './groups/entities/group-rehearsal.entity';
+import { GroupCommunityPost } from './groups/group-community.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -42,12 +48,13 @@ const databaseUrl = process.env.DATABASE_URL;
             password: process.env.POSTGRES_PASSWORD || 'postgrespassword',
             database: process.env.POSTGRES_DB || 'music_folder',
           }),
-      entities: [User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification],
+      entities: [User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification, Group, GroupMember, GroupLibraryItem, GroupRehearsal, GroupCommunityPost],
       synchronize: true,
     }),
-    TypeOrmModule.forFeature([User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification]),
+    TypeOrmModule.forFeature([User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification, Group, GroupMember, GroupLibraryItem, GroupRehearsal, GroupCommunityPost]),
     AuthModule,
     NotificationsModule,
+    GroupsModule,
   ],
   controllers: [
     AppController,

@@ -65,6 +65,53 @@ export interface NotificationItem {
   };
 }
 
+export interface GroupItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  type?: string;
+  visibility?: string;
+  join_code?: string;
+  is_join_code_active?: boolean;
+  owner?: { id?: string; name?: string; email?: string };
+}
+
+export interface GroupMember {
+  id: string;
+  role?: string;
+  status?: string;
+  user?: { id?: string; name?: string; email?: string };
+  group?: GroupItem;
+}
+
+export interface GroupLibraryItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  type?: string;
+  file_url?: string | null;
+  uploaded_by?: { id?: string; name?: string; email?: string } | null;
+}
+
+export interface GroupRehearsalItem {
+  id: string;
+  title: string;
+  date?: string | null;
+  time?: string | null;
+  location?: string | null;
+  agenda?: string | null;
+  notes?: string | null;
+  created_by?: { id?: string; name?: string; email?: string } | null;
+}
+
+export interface GroupCommunityPost {
+  id: string;
+  title: string;
+  content: string;
+  visibility?: string;
+  author?: { id?: string; name?: string; email?: string } | null;
+}
+
 const API_BASE = (import.meta.env.VITE_API_URL || 'https://music-folder-api.onrender.com') + '/api/v1';
 
 async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
@@ -304,6 +351,79 @@ export const api = {
   async likeThread(threadId: string): Promise<ForumThread | null> {
     return await fetchJSON<ForumThread>(`/forums/threads/${threadId}/like`, {
       method: 'POST',
+    });
+  },
+
+  async getGroups(): Promise<GroupItem[]> {
+    const data = await fetchJSON<GroupItem[]>('/groups');
+    return data || [];
+  },
+
+  async getUserGroups(userId: string): Promise<GroupItem[]> {
+    const data = await fetchJSON<GroupItem[]>(`/groups/user/${userId}`);
+    return data || [];
+  },
+
+  async createGroup(payload: { name: string; description?: string; type?: string; visibility?: string; ownerId: string }): Promise<GroupItem | null> {
+    return await fetchJSON<GroupItem>('/groups', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async joinGroup(payload: { userId: string; code: string }): Promise<GroupMember | null> {
+    return await fetchJSON<GroupMember>('/groups/join', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async regenerateGroupCode(groupId: string, userId: string): Promise<GroupItem | null> {
+    return await fetchJSON<GroupItem>(`/groups/${groupId}/regenerate-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+  },
+
+  async getGroupMembers(groupId: string): Promise<GroupMember[]> {
+    const data = await fetchJSON<GroupMember[]>(`/groups/${groupId}/members`);
+    return data || [];
+  },
+
+  async getGroupLibrary(groupId: string, userId: string): Promise<GroupLibraryItem[]> {
+    const data = await fetchJSON<GroupLibraryItem[]>(`/groups/${groupId}/library/${userId}`);
+    return data || [];
+  },
+
+  async createGroupLibraryItem(groupId: string, payload: { userId: string; title: string; description?: string; type?: string; file_url?: string; uploaded_by?: string }): Promise<GroupLibraryItem | null> {
+    return await fetchJSON<GroupLibraryItem>(`/groups/${groupId}/library`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getGroupRehearsals(groupId: string, userId: string): Promise<GroupRehearsalItem[]> {
+    const data = await fetchJSON<GroupRehearsalItem[]>(`/groups/${groupId}/rehearsals/${userId}`);
+    return data || [];
+  },
+
+  async createGroupRehearsal(groupId: string, payload: { title: string; date?: string; time?: string; location?: string; agenda?: string; notes?: string; created_by: string }): Promise<GroupRehearsalItem | null> {
+    return await fetchJSON<GroupRehearsalItem>(`/groups/${groupId}/rehearsals`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  async getGroupCommunity(groupId: string, userId: string): Promise<GroupCommunityPost[]> {
+    const data = await fetchJSON<GroupCommunityPost[]>(`/groups/${groupId}/community/${userId}`);
+    return data || [];
+  },
+
+  async createGroupPost(groupId: string, payload: { title: string; content: string; authorId: string; visibility?: string }): Promise<GroupCommunityPost | null> {
+    return await fetchJSON<GroupCommunityPost>(`/groups/${groupId}/community`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
   },
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, ForumThread, InstrumentItem, NotificationItem, RehearsalRecord, ScoreItem } from './api';
+import { api, ForumThread, GroupItem, InstrumentItem, NotificationItem, RehearsalRecord, ScoreItem } from './api';
 
 type View = 'inicio' | 'biblioteca' | 'ensayos' | 'instrumentos' | 'foro';
 
@@ -104,6 +104,25 @@ export default function App() {
   const [instruments, setInstruments] = useState<InstrumentItem[]>([]);
   const [records, setRecords] = useState<RehearsalRecord[]>([]);
   const [threads, setThreads] = useState<ForumThread[]>([]);
+  const [groups, setGroups] = useState<GroupItem[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [groupLibrary, setGroupLibrary] = useState<any[]>([]);
+  const [groupRehearsals, setGroupRehearsals] = useState<any[]>([]);
+  const [groupPosts, setGroupPosts] = useState<any[]>([]);
+  const selectedGroup = groups.find((group) => group.id === selectedGroupId) || null;
+  const isGroupDirector = Boolean(
+    selectedGroup &&
+      ((selectedGroup.owner && selectedGroup.owner.id === sessionUser?.id) ||
+        groupMembers.some((member) => member.user?.id === sessionUser?.id && member.role === 'director')),
+  );
+  const [groupForm, setGroupForm] = useState({ name: '', description: '', type: 'ensemble', visibility: 'private' });
+  const [joinGroupCode, setJoinGroupCode] = useState('');
+  const [groupStatus, setGroupStatus] = useState<string | null>(null);
+  const [newGroupLibraryItem, setNewGroupLibraryItem] = useState({ title: '', description: '', type: 'score' });
+  const [newGroupRehearsal, setNewGroupRehearsal] = useState({ title: '', date: '', time: '', location: '', agenda: '' });
+  const [newGroupPost, setNewGroupPost] = useState({ title: '', content: '', visibility: 'group' });
+  const [groupWorkspaceTab, setGroupWorkspaceTab] = useState<'resumen' | 'biblioteca' | 'ensayos' | 'comunidad'>('resumen');
 
   // Notifications state
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => getStoredNotifications());
@@ -145,6 +164,16 @@ export default function App() {
     api.getInstruments().then(setInstruments);
     api.getRecords().then(setRecords);
     api.getThreads().then(setThreads);
+    if (sessionUser?.id) {
+      api.getUserGroups(sessionUser.id).then((userGroups) => {
+        setGroups(userGroups);
+        if (userGroups.length > 0 && !selectedGroupId) {
+          setSelectedGroupId(userGroups[0].id);
+        }
+      });
+    } else {
+      api.getGroups().then(setGroups);
+    }
 
     const storedNotifications = getStoredNotifications();
     if (storedNotifications.length > 0) {
@@ -155,7 +184,27 @@ export default function App() {
     api.getNotifications().then((data) => {
       if (data && data.length > 0) setNotifications(data);
     });
-  }, []);
+  }, [sessionUser?.id]);
+
+  useEffect(() => {
+    if (!selectedGroupId || !sessionUser?.id) return;
+
+    api.getGroupMembers(selectedGroupId)
+      .then((members) => setGroupMembers(members))
+      .catch(() => setGroupMembers([]));
+
+    api.getGroupLibrary(selectedGroupId, sessionUser.id)
+      .then((items) => setGroupLibrary(items))
+      .catch(() => setGroupLibrary([]));
+
+    api.getGroupRehearsals(selectedGroupId, sessionUser.id)
+      .then((items) => setGroupRehearsals(items))
+      .catch(() => setGroupRehearsals([]));
+
+    api.getGroupCommunity(selectedGroupId, sessionUser.id)
+      .then((items) => setGroupPosts(items))
+      .catch(() => setGroupPosts([]));
+  }, [selectedGroupId, sessionUser?.id]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -313,6 +362,103 @@ export default function App() {
     window.localStorage.removeItem(STORAGE_KEY);
     setSessionUser(null);
     setView('inicio');
+  };
+
+  const handleCreateGroup = async () => {
+    if (!sessionUser?.id || !groupForm.name.trim()) return;
+
+    const created = await api.createGroup({
+      name: groupForm.name.trim(),
+      description: groupForm.description.trim(),
+      type: groupForm.type,
+      visibility: groupForm.visibility,
+      ownerId: sessionUser.id,
+    });
+
+    if (created) {
+      setGroups((prev) => [created, ...prev]);
+      setGroupStatus(`Grupo creado correctamente. Código: ${created.join_code || 'N/A'}`);
+      setGroupForm({ name: '', description: '', type: 'ensemble', visibility: 'private' });
+    } else {
+      setGroupStatus('No se pudo crear el grupo.');
+    }
+  };
+
+  const handleJoinGroup = async () => {
+    if (!sessionUser?.id || !joinGroupCode.trim()) return;
+
+    const result = await api.joinGroup({ userId: sessionUser.id, code: joinGroupCode.trim() });
+
+    if (result && result.group) {
+      setGroupStatus(`Te uniste al grupo "${result.group.name}".`);
+      setJoinGroupCode('');
+      const refreshed = await api.getUserGroups(sessionUser.id);
+      setGroups(refreshed);
+      if (refreshed.length > 0) setSelectedGroupId(refreshed[0].id);
+    } else {
+      setGroupStatus('El código es inválido o no está activo.');
+    }
+  };
+
+  const handleRegenerateGroupCode = async () => {
+    if (!sessionUser?.id || !selectedGroupId) return;
+
+    const updated = await api.regenerateGroupCode(selectedGroupId, sessionUser.id);
+    if (updated) {
+      setGroups((prev) => prev.map((group) => (group.id === selectedGroupId ? { ...group, join_code: updated.join_code } : group)));
+      setGroupStatus(`Se renovó el código del grupo. Nuevo código: ${updated.join_code}`);
+    }
+  };
+
+  const handleCreateGroupLibraryItem = async () => {
+    if (!sessionUser?.id || !selectedGroupId || !newGroupLibraryItem.title.trim()) return;
+
+    const created = await api.createGroupLibraryItem(selectedGroupId, {
+      userId: sessionUser.id,
+      title: newGroupLibraryItem.title.trim(),
+      description: newGroupLibraryItem.description.trim(),
+      type: newGroupLibraryItem.type,
+      uploaded_by: sessionUser.id,
+    });
+
+    if (created) {
+      setGroupLibrary((prev) => [created, ...prev]);
+      setNewGroupLibraryItem({ title: '', description: '', type: 'score' });
+    }
+  };
+
+  const handleCreateGroupRehearsal = async () => {
+    if (!sessionUser?.id || !selectedGroupId || !newGroupRehearsal.title.trim()) return;
+
+    const created = await api.createGroupRehearsal(selectedGroupId, {
+      title: newGroupRehearsal.title.trim(),
+      date: newGroupRehearsal.date,
+      time: newGroupRehearsal.time,
+      location: newGroupRehearsal.location,
+      agenda: newGroupRehearsal.agenda,
+      created_by: sessionUser.id,
+    });
+
+    if (created) {
+      setGroupRehearsals((prev) => [created, ...prev]);
+      setNewGroupRehearsal({ title: '', date: '', time: '', location: '', agenda: '' });
+    }
+  };
+
+  const handleCreateGroupPost = async () => {
+    if (!sessionUser?.id || !selectedGroupId || !newGroupPost.title.trim() || !newGroupPost.content.trim()) return;
+
+    const created = await api.createGroupPost(selectedGroupId, {
+      title: newGroupPost.title.trim(),
+      content: newGroupPost.content.trim(),
+      authorId: sessionUser.id,
+      visibility: newGroupPost.visibility,
+    });
+
+    if (created) {
+      setGroupPosts((prev) => [created, ...prev]);
+      setNewGroupPost({ title: '', content: '', visibility: 'group' });
+    }
   };
 
   const handleAssistantSubmit = (e: React.FormEvent) => {
@@ -868,9 +1014,218 @@ export default function App() {
             )}
           </div>
 
+          {selectedGroupId && (
+            <section className="panel" style={{ marginBottom: 18 }}>
+              <div className="panel-title">
+                <h2>{selectedGroup?.name || 'Grupo'}</h2>
+                {isGroupDirector && (
+                  <button className="btn-secondary" onClick={handleRegenerateGroupCode}>Renovar código</button>
+                )}
+              </div>
+
+              <div className="filters" style={{ margin: '12px 0' }}>
+                {[
+                  ['resumen', 'Resumen'],
+                  ['biblioteca', 'Biblioteca'],
+                  ['ensayos', 'Ensayos'],
+                  ['comunidad', 'Comunidad'],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    className={groupWorkspaceTab === key ? 'selected' : ''}
+                    onClick={() => setGroupWorkspaceTab(key as any)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {groupWorkspaceTab === 'resumen' && (
+                <>
+                  <div className="form-row" style={{ marginBottom: 12 }}>
+                    <div className="data-card">
+                      <span>Grupo</span>
+                      <strong>{selectedGroup?.name || 'Sin nombre'}</strong>
+                    </div>
+                    <div className="data-card">
+                      <span>Código</span>
+                      <strong>{selectedGroup?.join_code || '—'}</strong>
+                    </div>
+                    <div className="data-card">
+                      <span>Rol</span>
+                      <strong>{isGroupDirector ? 'Director' : 'Alumno'}</strong>
+                    </div>
+                  </div>
+
+                  <div className="form-row" style={{ marginTop: 12 }}>
+                    <div className="data-card">
+                      <span>Miembros</span>
+                      <strong>{groupMembers.length}</strong>
+                    </div>
+                    <div className="data-card">
+                      <span>Biblioteca</span>
+                      <strong>{groupLibrary.length}</strong>
+                    </div>
+                    <div className="data-card">
+                      <span>Ensayos</span>
+                      <strong>{groupRehearsals.length}</strong>
+                    </div>
+                    <div className="data-card">
+                      <span>Mensajes</span>
+                      <strong>{groupPosts.length}</strong>
+                    </div>
+                  </div>
+
+                  <div className="panel-title" style={{ marginTop: 16 }}>
+                    <h3>Miembros</h3>
+                  </div>
+                  <div className="stack-list">
+                    {groupMembers.length === 0 ? <p>Sin miembros aún.</p> : groupMembers.map((member) => (
+                      <div key={member.id} className="mini-card">
+                        <strong>{member.user?.name || member.user?.email || 'Miembro'}</strong>
+                        <small>{member.role || 'student'} · {member.status || 'active'}</small>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {groupWorkspaceTab === 'biblioteca' && (
+                <>
+                  <div className="form-row" style={{ marginBottom: 12 }}>
+                    <input
+                      value={newGroupLibraryItem.title}
+                      onChange={(e) => setNewGroupLibraryItem({ ...newGroupLibraryItem, title: e.target.value })}
+                      placeholder="Título de la partitura o recurso"
+                    />
+                    <input
+                      value={newGroupLibraryItem.description}
+                      onChange={(e) => setNewGroupLibraryItem({ ...newGroupLibraryItem, description: e.target.value })}
+                      placeholder="Descripción"
+                    />
+                    <select value={newGroupLibraryItem.type} onChange={(e) => setNewGroupLibraryItem({ ...newGroupLibraryItem, type: e.target.value })}>
+                      <option value="score">Partitura</option>
+                      <option value="material">Material</option>
+                      <option value="audio">Audio</option>
+                    </select>
+                    <button className="primary" onClick={handleCreateGroupLibraryItem}>Guardar</button>
+                  </div>
+                  <div className="stack-list">
+                    {groupLibrary.length === 0 ? <p>Sin bibliografía todavía.</p> : groupLibrary.map((item) => (
+                      <div key={item.id} className="mini-card">
+                        <strong>{item.title}</strong>
+                        <small>{item.description || 'Sin descripción'}</small>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {groupWorkspaceTab === 'ensayos' && (
+                <>
+                  <div className="form-row" style={{ marginBottom: 12 }}>
+                    <input
+                      value={newGroupRehearsal.title}
+                      onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, title: e.target.value })}
+                      placeholder="Título del ensayo"
+                    />
+                    <input
+                      value={newGroupRehearsal.date}
+                      onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, date: e.target.value })}
+                      placeholder="Fecha"
+                    />
+                    <input
+                      value={newGroupRehearsal.time}
+                      onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, time: e.target.value })}
+                      placeholder="Hora"
+                    />
+                    <input
+                      value={newGroupRehearsal.location}
+                      onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, location: e.target.value })}
+                      placeholder="Lugar"
+                    />
+                    <button className="primary" onClick={handleCreateGroupRehearsal}>Programar</button>
+                  </div>
+                  <div className="stack-list">
+                    {groupRehearsals.length === 0 ? <p>No hay ensayos programados.</p> : groupRehearsals.map((rehearsal) => (
+                      <div key={rehearsal.id} className="mini-card">
+                        <strong>{rehearsal.title}</strong>
+                        <small>{rehearsal.date || 'Sin fecha'} · {rehearsal.time || 'Sin hora'} · {rehearsal.location || 'Sin lugar'}</small>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {groupWorkspaceTab === 'comunidad' && (
+                <>
+                  <div className="form-row" style={{ marginBottom: 12 }}>
+                    <input
+                      value={newGroupPost.title}
+                      onChange={(e) => setNewGroupPost({ ...newGroupPost, title: e.target.value })}
+                      placeholder="Título del mensaje"
+                    />
+                    <select value={newGroupPost.visibility} onChange={(e) => setNewGroupPost({ ...newGroupPost, visibility: e.target.value })}>
+                      <option value="group">Grupo</option>
+                      <option value="director">Director</option>
+                    </select>
+                  </div>
+                  <textarea
+                    rows={4}
+                    value={newGroupPost.content}
+                    onChange={(e) => setNewGroupPost({ ...newGroupPost, content: e.target.value })}
+                    placeholder="Escribí una actualización para el grupo..."
+                    style={{ width: '100%', marginBottom: 12 }}
+                  />
+                  <button className="primary" onClick={handleCreateGroupPost}>Publicar</button>
+                  <div className="stack-list" style={{ marginTop: 16 }}>
+                    {groupPosts.length === 0 ? <p>No hay mensajes del grupo todavía.</p> : groupPosts.map((post) => (
+                      <div key={post.id} className="mini-card">
+                        <strong>{post.title}</strong>
+                        <small>{post.content}</small>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
           {/* VISTA: INICIO */}
           {view === 'inicio' && (
             <>
+              {selectedGroupId && (
+                <section className="panel" style={{ marginBottom: 18 }}>
+                  <div className="panel-title">
+                    <h2>Espacio del grupo activo</h2>
+                    <select value={selectedGroupId} onChange={(e) => setSelectedGroupId(e.target.value)}>
+                      {groups.map((group) => (
+                        <option key={group.id} value={group.id}>{group.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-row" style={{ marginTop: 12 }}>
+                    <div className="data-card">
+                      <span>Miembros</span>
+                      <strong>{groupMembers.length}</strong>
+                    </div>
+                    <div className="data-card">
+                      <span>Biblioteca</span>
+                      <strong>{groupLibrary.length}</strong>
+                    </div>
+                    <div className="data-card">
+                      <span>Ensayos</span>
+                      <strong>{groupRehearsals.length}</strong>
+                    </div>
+                    <div className="data-card">
+                      <span>Mensajes</span>
+                      <strong>{groupPosts.length}</strong>
+                    </div>
+                  </div>
+                </section>
+              )}
+
               <section className="hero">
                 <div>
                   <p className="eyebrow">ORQUESTA DE CÁMARA</p>
@@ -901,6 +1256,83 @@ export default function App() {
               <section className="two-col">
                 <article className="panel">
                   <div className="panel-title">
+                    <h2>Grupos</h2>
+                    <button onClick={() => setView('inicio')}>Actualizar →</button>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <label>Nombre del grupo</label>
+                    <input
+                      value={groupForm.name}
+                      onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                      placeholder="Ej. Banda Sinfónica Juvenil"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <label>Descripción</label>
+                    <input
+                      value={groupForm.description}
+                      onChange={(e) => setGroupForm({ ...groupForm, description: e.target.value })}
+                      placeholder="Descripción del grupo"
+                    />
+                  </div>
+
+                  <div className="form-row" style={{ marginBottom: 12 }}>
+                    <div className="form-group">
+                      <label>Tipo</label>
+                      <select value={groupForm.type} onChange={(e) => setGroupForm({ ...groupForm, type: e.target.value })}>
+                        <option value="ensemble">Ensamble</option>
+                        <option value="course">Curso</option>
+                        <option value="studio">Estudio</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Visibilidad</label>
+                      <select value={groupForm.visibility} onChange={(e) => setGroupForm({ ...groupForm, visibility: e.target.value })}>
+                        <option value="private">Privado</option>
+                        <option value="invite_only">Invitación</option>
+                        <option value="public">Público</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button className="primary" onClick={handleCreateGroup} style={{ marginBottom: 12 }}>
+                    Crear grupo
+                  </button>
+
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <label>Código del grupo</label>
+                    <input
+                      value={joinGroupCode}
+                      onChange={(e) => setJoinGroupCode(e.target.value)}
+                      placeholder="Ej. ABCD1234"
+                    />
+                  </div>
+
+                  <button className="btn-secondary" onClick={handleJoinGroup}>
+                    Unirme por código
+                  </button>
+
+                  {groupStatus && (
+                    <p style={{ marginTop: 12, color: '#1a237e', fontSize: 13 }}>{groupStatus}</p>
+                  )}
+
+                  {groups.length > 0 && (
+                    <div style={{ marginTop: 18 }}>
+                      {groups.slice(0, 3).map((group) => (
+                        <div key={group.id} style={{ border: '1px solid #ececf3', borderRadius: 10, padding: 12, marginBottom: 8, cursor: 'pointer' }} onClick={() => setSelectedGroupId(group.id)}>
+                          <strong>{group.name}</strong>
+                          <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{group.description || 'Grupo musical'}</div>
+                          <div style={{ fontSize: 12, color: '#444', marginTop: 6 }}>Código: <b>{group.join_code}</b></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </article>
+
+                <article className="panel">
+                  <div className="panel-title">
                     <h2>Próximos ensayos</h2>
                     <button onClick={() => setView('ensayos')}>Ver calendario →</button>
                   </div>
@@ -917,7 +1349,9 @@ export default function App() {
                     </div>
                   ))}
                 </article>
+              </section>
 
+              <section className="two-col" style={{ marginTop: 18 }}>
                 <article className="panel">
                   <div className="panel-title">
                     <h2>Actividad reciente</h2>
