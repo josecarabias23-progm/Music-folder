@@ -2,4 +2,6 @@ node_modules/
 dist/
 uploads/
 .env
+apps/web/.env
+!apps/web/.env.example
 .vscode/

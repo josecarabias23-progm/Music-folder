@@ -663,6 +663,13 @@ export default function App() {
             </div>
           </div>
 
+          <div
+            className={`stitch-status-pill login ${stitchStatus === 'connected' ? 'connected' : stitchStatus === 'offline' ? 'offline' : 'loading'}`}
+            title={stitchStatus === 'connected' ? 'Google Stitch conectado' : stitchStatus === 'offline' ? 'Google Stitch no disponible' : 'Conectando con Google Stitch'}
+          >
+            {stitchStatus === 'connected' ? '🟢 Google Stitch conectado' : stitchStatus === 'offline' ? '🔴 Google Stitch offline' : '🟡 Conectando a Stitch...'}
+          </div>
+
           <div className="auth-tabs">
             <button
               type="button"
