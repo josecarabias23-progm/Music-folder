@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, ForumThread, GroupItem, InstrumentItem, NotificationItem, RehearsalRecord, ScoreItem } from './api';
+import { initializeGoogleStitch, listGoogleStitchTools, StitchTool } from './stitch';
 
 type View = 'inicio' | 'biblioteca' | 'ensayos' | 'instrumentos' | 'foro';
 
@@ -98,6 +99,8 @@ export default function App() {
       text: 'Hola, soy tu asistente de Music Folder. Puedo ayudarte con repertorio, ensayos, notificaciones y coordinación del grupo.',
     },
   ]);
+  const [stitchStatus, setStitchStatus] = useState<'loading' | 'connected' | 'offline'>('loading');
+  const [stitchTools, setStitchTools] = useState<StitchTool[]>([]);
 
   // Data states
   const [scores, setScores] = useState<ScoreItem[]>([]);
@@ -160,6 +163,26 @@ export default function App() {
 
   // Initial Load
   useEffect(() => {
+    const loadStitchStatus = async () => {
+      try {
+        const info = await initializeGoogleStitch();
+        if (!info) {
+          setStitchStatus('offline');
+          setStitchTools([]);
+          return;
+        }
+
+        setStitchStatus('connected');
+        const tools = await listGoogleStitchTools();
+        setStitchTools(tools);
+      } catch {
+        setStitchStatus('offline');
+        setStitchTools([]);
+      }
+    };
+
+    loadStitchStatus();
+
     api.getScores().then(setScores);
     api.getInstruments().then(setInstruments);
     api.getRecords().then(setRecords);
@@ -865,6 +888,13 @@ export default function App() {
           </div>
           <div className="header-actions">
             <button title="Búsqueda rápida">⌕</button>
+
+            <div
+              className={`stitch-status-pill ${stitchStatus === 'connected' ? 'connected' : stitchStatus === 'offline' ? 'offline' : 'loading'}`}
+              title={stitchStatus === 'connected' ? `Google Stitch conectado • ${stitchTools.length} tools` : stitchStatus === 'offline' ? 'Google Stitch no disponible' : 'Conectando con Google Stitch'}
+            >
+              {stitchStatus === 'connected' ? '🟢 Stitch OK' : stitchStatus === 'offline' ? '🔴 Stitch OFF' : '🟡 Stitch...'}
+            </div>
 
             {/* Stitch UI Notification Bell Dropdown */}
             <div className="notification-bell-wrapper">
