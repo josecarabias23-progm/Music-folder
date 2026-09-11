@@ -528,12 +528,13 @@
 }
 
 .notif-header {
-  padding: 14px 18px;
+  padding: 12px 14px;
   border-bottom: 1px solid #e0e2e8;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: #fbfbfe;
+  gap: 8px;
 }
 
 .notif-header strong {
@@ -543,10 +544,10 @@
 }
 
 .notif-count-pill {
-  font-size: 11px;
+  font-size: 10px;
   background: #e8e7ff;
   color: #1a237e;
-  padding: 3px 8px;
+  padding: 3px 7px;
   border-radius: 12px;
   font-weight: 600;
   margin-left: 8px;
@@ -555,18 +556,19 @@
 .notif-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
 .notif-read-all-btn,
 .notif-clear-all-btn {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 5px 8px;
   border-radius: 8px;
   background: #ffffff;
+  line-height: 1.2;
 }
 
 .notif-read-all-btn {
@@ -588,16 +590,16 @@
 .notif-filters {
   display: flex;
   gap: 6px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: #f4f5fd;
   border-bottom: 1px solid #edeeef;
   overflow-x: auto;
 }
 
 .notif-filters button {
-  padding: 6px 12px;
-  border-radius: 14px;
-  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #59607a;
   background: transparent;
@@ -637,8 +639,8 @@
 
 .notif-item {
   display: flex;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 11px 12px;
   border-bottom: 1px solid #f0f1f5;
   cursor: pointer;
   transition: background 0.15s ease;
@@ -654,9 +656,9 @@
 }
 
 .notif-icon {
-  font-size: 20px;
-  width: 34px;
-  height: 34px;
+  font-size: 17px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #ffffff;
   display: grid;
@@ -673,17 +675,17 @@
 .notif-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-left: 8px;
+  gap: 6px;
+  margin-left: 6px;
 }
 
 .notif-delete-btn {
   border: 1px solid #d6d9eb;
   background: #ffffff;
   color: #5a5f76;
-  border-radius: 8px;
-  padding: 6px 9px;
-  font-size: 11px;
+  border-radius: 7px;
+  padding: 4px 7px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
