@@ -649,6 +649,22 @@ export default function App() {
 
   const [heading, subheading] = titles[view];
   const userName = sessionUser?.name ? sessionUser.name.split(' ')[0] : 'músico';
+  const normalizedRole = (sessionUser?.role || '').toLowerCase();
+  const isDirector = Boolean(
+    normalizedRole.includes('director') ||
+      normalizedRole.includes('conductor') ||
+      normalizedRole.includes('gestor') ||
+      normalizedRole.includes('coordinador') ||
+      normalizedRole.includes('administrador'),
+  );
+  const canCreateGroups = isDirector;
+  const canSeeGroupCode = isDirector || isGroupDirector;
+  const roleLabel = isDirector ? 'Director' : 'Músico';
+  const roleHeroTitle = isDirector ? 'Tu dirección, sincronizada.' : 'Tu música, siempre en orden.';
+  const roleHeroDescription = isDirector
+    ? 'Controlá grupos, repertorio y ensayos desde un panel pensado para coordinar la agrupación.'
+    : 'Consulta partituras, fechas de ensayo y la comunidad musical sin perder el pulso del grupo.';
+  const roleHeroButton = isDirector ? 'Gestionar grupos' : 'Explorar biblioteca';
   const dynamicHeading = view === 'inicio' ? `Buenos días, ${userName}` : heading;
 
   if (!sessionUser) {
@@ -853,7 +869,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell role-${isDirector ? 'director' : 'musician'}`} data-role={isDirector ? 'director' : 'musician'}>
       {/* Sidebar */}
       <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
         <div className="brand">
@@ -894,6 +910,7 @@ export default function App() {
             Music Folder <span>/</span> {nav.find((x) => x.id === view)?.label}
           </div>
           <div className="header-actions">
+            <span className={`role-badge ${isDirector ? 'director' : 'musician'}`}>{roleLabel}</span>
             <button title="Búsqueda rápida">⌕</button>
 
             <div
@@ -1086,11 +1103,11 @@ export default function App() {
                     </div>
                     <div className="data-card">
                       <span>Código</span>
-                      <strong>{selectedGroup?.join_code || '—'}</strong>
+                      <strong>{canSeeGroupCode ? (selectedGroup?.join_code || '—') : 'Solo director'}</strong>
                     </div>
                     <div className="data-card">
                       <span>Rol</span>
-                      <strong>{isGroupDirector ? 'Director' : 'Alumno'}</strong>
+                      <strong>{isGroupDirector || isDirector ? 'Director' : 'Músico'}</strong>
                     </div>
                   </div>
 
@@ -1263,28 +1280,31 @@ export default function App() {
                 </section>
               )}
 
-              <section className="hero">
+              <section className={`hero ${isDirector ? 'hero-director' : 'hero-musician'}`}>
                 <div>
-                  <p className="eyebrow">ORQUESTA DE CÁMARA</p>
-                  <h2>Tu música, siempre en orden.</h2>
-                  <p>Centraliza partituras, ensayos y conversaciones en un mismo lugar.</p>
-                  <button className="primary" onClick={() => setView('biblioteca')}>
-                    Explorar biblioteca
+                  <span className={`role-strip ${isDirector ? 'director' : 'musician'}`}>
+                    {isDirector ? 'Modo Director' : 'Modo Músico'}
+                  </span>
+                  <p className="eyebrow">{isDirector ? 'PANEL DEL DIRECTOR' : 'ORQUESTA DE CÁMARA'}</p>
+                  <h2>{roleHeroTitle}</h2>
+                  <p>{roleHeroDescription}</p>
+                  <button className="primary" onClick={() => setView(isDirector ? 'inicio' : 'biblioteca')}>
+                    {roleHeroButton}
                   </button>
                 </div>
-                <div className="hero-note">𝄞</div>
+                <div className="hero-note">{isDirector ? '🎼' : '𝄞'}</div>
               </section>
 
               <section className="metrics">
-                <article style={{ cursor: 'pointer' }} onClick={() => setView('biblioteca')}>
+                <article className={`metric-card ${isDirector ? 'director' : 'musician'}`} style={{ cursor: 'pointer' }} onClick={() => setView('biblioteca')}>
                   <b>{scores.length}</b>
                   <span>Partituras activas</span>
                 </article>
-                <article style={{ cursor: 'pointer' }} onClick={() => setView('ensayos')}>
+                <article className={`metric-card ${isDirector ? 'director' : 'musician'}`} style={{ cursor: 'pointer' }} onClick={() => setView('ensayos')}>
                   <b>{records.length}</b>
                   <span>Ensayos agendados</span>
                 </article>
-                <article style={{ cursor: 'pointer' }} onClick={() => setView('foro')}>
+                <article className={`metric-card ${isDirector ? 'director' : 'musician'}`} style={{ cursor: 'pointer' }} onClick={() => setView('foro')}>
                   <b>{threads.length}</b>
                   <span>Publicaciones en Comunidad</span>
                 </article>
@@ -1297,46 +1317,55 @@ export default function App() {
                     <button onClick={() => setView('inicio')}>Actualizar →</button>
                   </div>
 
-                  <div className="form-group" style={{ marginBottom: 12 }}>
-                    <label>Nombre del grupo</label>
-                    <input
-                      value={groupForm.name}
-                      onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
-                      placeholder="Ej. Banda Sinfónica Juvenil"
-                    />
-                  </div>
+                  {canCreateGroups ? (
+                    <>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label>Nombre del grupo</label>
+                        <input
+                          value={groupForm.name}
+                          onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                          placeholder="Ej. Banda Sinfónica Juvenil"
+                        />
+                      </div>
 
-                  <div className="form-group" style={{ marginBottom: 12 }}>
-                    <label>Descripción</label>
-                    <input
-                      value={groupForm.description}
-                      onChange={(e) => setGroupForm({ ...groupForm, description: e.target.value })}
-                      placeholder="Descripción del grupo"
-                    />
-                  </div>
+                      <div className="form-group" style={{ marginBottom: 12 }}>
+                        <label>Descripción</label>
+                        <input
+                          value={groupForm.description}
+                          onChange={(e) => setGroupForm({ ...groupForm, description: e.target.value })}
+                          placeholder="Descripción del grupo"
+                        />
+                      </div>
 
-                  <div className="form-row" style={{ marginBottom: 12 }}>
-                    <div className="form-group">
-                      <label>Tipo</label>
-                      <select value={groupForm.type} onChange={(e) => setGroupForm({ ...groupForm, type: e.target.value })}>
-                        <option value="ensemble">Ensamble</option>
-                        <option value="course">Curso</option>
-                        <option value="studio">Estudio</option>
-                      </select>
+                      <div className="form-row" style={{ marginBottom: 12 }}>
+                        <div className="form-group">
+                          <label>Tipo</label>
+                          <select value={groupForm.type} onChange={(e) => setGroupForm({ ...groupForm, type: e.target.value })}>
+                            <option value="ensemble">Ensamble</option>
+                            <option value="course">Curso</option>
+                            <option value="studio">Estudio</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Visibilidad</label>
+                          <select value={groupForm.visibility} onChange={(e) => setGroupForm({ ...groupForm, visibility: e.target.value })}>
+                            <option value="private">Privado</option>
+                            <option value="invite_only">Invitación</option>
+                            <option value="public">Público</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <button className="primary" onClick={handleCreateGroup} style={{ marginBottom: 12 }}>
+                        Crear grupo
+                      </button>
+                    </>
+                  ) : (
+                    <div className="role-locked-card" style={{ marginBottom: 12 }}>
+                      <strong>Acceso por código</strong>
+                      <p>Solo el director puede crear grupos y ver el código del grupo.</p>
                     </div>
-                    <div className="form-group">
-                      <label>Visibilidad</label>
-                      <select value={groupForm.visibility} onChange={(e) => setGroupForm({ ...groupForm, visibility: e.target.value })}>
-                        <option value="private">Privado</option>
-                        <option value="invite_only">Invitación</option>
-                        <option value="public">Público</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <button className="primary" onClick={handleCreateGroup} style={{ marginBottom: 12 }}>
-                    Crear grupo
-                  </button>
+                  )}
 
                   <div className="form-group" style={{ marginBottom: 12 }}>
                     <label>Código del grupo</label>
@@ -1361,7 +1390,9 @@ export default function App() {
                         <div key={group.id} style={{ border: '1px solid #ececf3', borderRadius: 10, padding: 12, marginBottom: 8, cursor: 'pointer' }} onClick={() => setSelectedGroupId(group.id)}>
                           <strong>{group.name}</strong>
                           <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{group.description || 'Grupo musical'}</div>
-                          <div style={{ fontSize: 12, color: '#444', marginTop: 6 }}>Código: <b>{group.join_code}</b></div>
+                          {canSeeGroupCode && (
+                            <div style={{ fontSize: 12, color: '#444', marginTop: 6 }}>Código: <b>{group.join_code}</b></div>
+                          )}
                         </div>
                       ))}
                     </div>

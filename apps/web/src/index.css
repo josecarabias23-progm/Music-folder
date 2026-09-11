@@ -266,6 +266,129 @@ header {
   display: none;
 }
 
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.role-badge.director {
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.25);
+  color: #7d5d00;
+}
+
+.role-badge.musician {
+  background: rgba(26, 35, 126, 0.08);
+  border-color: rgba(26, 35, 126, 0.12);
+  color: var(--primary);
+}
+
+.role-locked-card {
+  background: linear-gradient(135deg, rgba(26, 35, 126, 0.04), rgba(111, 72, 178, 0.06));
+  border: 1px solid rgba(26, 35, 126, 0.12);
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: var(--text-muted);
+}
+
+.role-locked-card strong {
+  display: block;
+  color: var(--primary-deep);
+  margin-bottom: 4px;
+}
+
+.role-locked-card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.app-shell.role-director {
+  --director-accent: #c89d1c;
+  --director-accent-deep: #7a5a00;
+  --director-soft: rgba(212, 175, 55, 0.12);
+}
+
+.app-shell.role-director .sidebar {
+  background: linear-gradient(180deg, rgba(255, 248, 223, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+  border-right-color: rgba(200, 157, 28, 0.2);
+}
+
+.app-shell.role-director header {
+  background: rgba(255, 249, 232, 0.94);
+  border-bottom-color: rgba(200, 157, 28, 0.2);
+}
+
+.app-shell.role-director .brand span,
+.app-shell.role-director .hero-note,
+.app-shell.role-director nav button.active,
+.app-shell.role-director .primary,
+.app-shell.role-director button.primary {
+  color: #1e1a0a;
+}
+
+.app-shell.role-director .brand span {
+  color: #c89d1c;
+}
+
+.app-shell.role-director .primary,
+.app-shell.role-director button.primary {
+  background: linear-gradient(135deg, #d4af37 0%, #b8890d 100%);
+  box-shadow: 0 8px 18px rgba(184, 137, 13, 0.22);
+}
+
+.app-shell.role-director nav button.active {
+  background: rgba(212, 175, 55, 0.12);
+  box-shadow: inset 3px 0 0 #d4af37;
+}
+
+.app-shell.role-director .hero {
+  background: linear-gradient(135deg, rgba(255, 246, 217, 0.9) 0%, rgba(248, 240, 210, 0.92) 42%, rgba(255, 255, 255, 1) 100%);
+  border-color: rgba(200, 157, 28, 0.25);
+}
+
+.app-shell.role-director .cover {
+  background: linear-gradient(135deg, #7b5b00 0%, #d4af37 100%);
+}
+
+.app-shell.role-director .panel {
+  border-color: rgba(200, 157, 28, 0.2);
+}
+
+.app-shell.role-musician .sidebar {
+  background: linear-gradient(180deg, rgba(244, 246, 255, 0.97) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.app-shell.role-musician header {
+  background: rgba(245, 247, 255, 0.94);
+}
+
+.app-shell.role-musician .brand span {
+  color: #7d6fe7;
+}
+
+.app-shell.role-musician .primary,
+.app-shell.role-musician button.primary {
+  background: linear-gradient(135deg, #1a237e 0%, #3e4ec7 100%);
+}
+
+.app-shell.role-musician nav button.active {
+  background: rgba(102, 112, 222, 0.12);
+  box-shadow: inset 3px 0 0 rgba(52, 63, 176, 0.7);
+}
+
+.app-shell.role-musician .hero {
+  background: linear-gradient(135deg, #f2f5ff 0%, #eef1ff 40%, #f9f5ff 100%);
+}
+
 .content {
   padding: 36px 40px 80px;
   max-width: 1440px;
@@ -346,6 +469,30 @@ button.btn-danger {
   background: linear-gradient(135deg, #f2f5ff 0%, #eef1ff 40%, #f9f5ff 100%);
   border: 1px solid #dfe3f3;
   box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.role-strip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.role-strip.director {
+  background: rgba(212, 175, 55, 0.14);
+  color: #8a6600;
+}
+
+.role-strip.musician {
+  background: rgba(26, 35, 126, 0.08);
+  color: var(--primary);
 }
 
 .hero h2 {
@@ -408,6 +555,16 @@ button.btn-danger {
   justify-content: space-between;
   gap: 12px;
   border-left: 4px solid rgba(26, 35, 126, 0.12);
+}
+
+.metric-card.director {
+  border-left-color: rgba(212, 175, 55, 0.85);
+  background: linear-gradient(180deg, #fffdf8 0%, #fffaf0 100%);
+}
+
+.metric-card.musician {
+  border-left-color: rgba(26, 35, 126, 0.75);
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9ff 100%);
 }
 
 .metrics b {
