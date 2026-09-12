@@ -19,6 +19,19 @@ export class GroupsService {
     private readonly notificationRepository: Repository<Notification>,
   ) {}
 
+  private isDirectorRole(role?: string | null): boolean {
+    const normalized = (role ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+
+    if (!normalized) return false;
+
+    return ['director', 'conductor', 'gestor', 'coordinador', 'administrador', 'jefe de cuerda'].some((token) => normalized.includes(token));
+  }
+
   private generateJoinCode(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -42,6 +55,10 @@ export class GroupsService {
     const owner = await this.userRepository.findOne({ where: { id: payload.ownerId } });
     if (!owner) {
       throw new NotFoundException(`User ${payload.ownerId} not found`);
+    }
+
+    if (!this.isDirectorRole(owner.role)) {
+      throw new ForbiddenException('Only director-role users can create groups');
     }
 
     let joinCode = this.generateJoinCode();

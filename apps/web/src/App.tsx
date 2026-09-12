@@ -51,6 +51,22 @@ function getStoredNotifications(userId?: string): NotificationItem[] {
   }
 }
 
+function normalizeRoleValue(role?: string): string {
+  return (role ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function isDirectorRole(role?: string): boolean {
+  const normalized = normalizeRoleValue(role);
+  if (!normalized) return false;
+
+  return ['director', 'conductor', 'gestor', 'coordinador', 'administrador', 'jefe de cuerda'].some((token) => normalized.includes(token));
+}
+
 function getAssistantReply(input: string): string {
   const text = input.toLowerCase();
 
@@ -122,7 +138,7 @@ export default function App() {
   const isGroupDirector = Boolean(
     selectedGroup &&
       ((selectedGroup.owner && selectedGroup.owner.id === sessionUser?.id) ||
-        groupMembers.some((member) => member.user?.id === sessionUser?.id && member.role === 'director')),
+        groupMembers.some((member) => member.user?.id === sessionUser?.id && isDirectorRole(member.role))),
   );
   const [groupForm, setGroupForm] = useState({ name: '', description: '', type: 'ensemble', visibility: 'private' });
   const [joinGroupCode, setJoinGroupCode] = useState('');
@@ -260,6 +276,8 @@ export default function App() {
   }, [toastMessage]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const isDirector = isDirectorRole(sessionUser?.role);
 
   const handleMarkAsRead = async (id: string) => {
     await api.markNotificationAsRead(id);
@@ -406,6 +424,11 @@ export default function App() {
 
   const handleCreateGroup = async () => {
     if (!sessionUser?.id || !groupForm.name.trim()) return;
+
+    if (!isDirectorRole(sessionUser.role)) {
+      setGroupStatus('Solo los perfiles de director pueden crear grupos.');
+      return;
+    }
 
     const created = await api.createGroup({
       name: groupForm.name.trim(),
@@ -666,14 +689,6 @@ export default function App() {
 
   const [heading, subheading] = titles[view];
   const userName = sessionUser?.name ? sessionUser.name.split(' ')[0] : 'músico';
-  const normalizedRole = (sessionUser?.role || '').toLowerCase();
-  const isDirector = Boolean(
-    normalizedRole.includes('director') ||
-      normalizedRole.includes('conductor') ||
-      normalizedRole.includes('gestor') ||
-      normalizedRole.includes('coordinador') ||
-      normalizedRole.includes('administrador'),
-  );
   const canCreateGroups = isDirector;
   const canSeeGroupCode = isDirector || isGroupDirector;
   const roleLabel = isDirector ? 'Director' : 'Músico';
