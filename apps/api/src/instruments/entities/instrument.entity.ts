@@ -27,29 +27,29 @@ export class Instrument {
   @Column('boolean', { default: false })
   is_transposing: boolean;
 
-  @Column({ type: 'simple-json' })
-  range: {
-    lowest_note: string;
-    highest_note: string;
-  };
+  @Column({ type: 'simple-json', nullable: true })
+range?: {
+  lowest_note: string;
+  highest_note: string;
+};
 
-  @Column({ type: 'simple-json' })
-  concert_range: {
-    lowest_note: string;
-    highest_note: string;
-  };
+@Column({ type: 'simple-json', nullable: true })
+concert_range?: {
+  lowest_note: string;
+  highest_note: string;
+};
 
-  @Column({ type: 'simple-json' })
-  clef: string[];
+@Column({ type: 'simple-json', nullable: true })
+clef?: string[];
 
-  @Column({ type: 'simple-json' })
-  dynamic_range: {
-    softest: string;
-    loudest: string;
-  };
+@Column({ type: 'simple-json', nullable: true })
+dynamic_range?: {
+  softest: string;
+  loudest: string;
+};
 
-  @Column({ type: 'simple-json' })
-  techniques: string[];
+@Column({ type: 'simple-json', nullable: true })
+techniques?: string[];
 
   @Column('text', { nullable: true })
   maintenance_tips: string;
