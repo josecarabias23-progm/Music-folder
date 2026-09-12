@@ -23,7 +23,7 @@ export class Notification {
   @Column({ name: 'target_id', type: 'uuid', nullable: true })
   targetId: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   metadata: Record<string, any>;
 
   @CreateDateColumn({ name: 'created_at' })

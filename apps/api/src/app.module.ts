@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -33,23 +34,28 @@ import { GroupRehearsal } from './groups/entities/group-rehearsal.entity';
 import { GroupCommunityPost } from './groups/group-community.entity';
 
 const databaseUrl = process.env.DATABASE_URL;
+const dbType = process.env.DB_TYPE || (databaseUrl ? 'postgres' : 'sqlite');
+const sqlitePath = process.env.SQLITE_DB_PATH || path.resolve(process.cwd(), 'db', 'music-folder.sqlite');
 
 @Module({
   imports: [
     EventEmitterModule.forRoot(),
     TypeOrmModule.forRoot({
-      type: 'postgres',
+      type: dbType === 'sqlite' ? 'sqlite' : 'postgres',
       ...(databaseUrl
         ? { url: databaseUrl }
-        : {
-            host: process.env.POSTGRES_HOST || 'localhost',
-            port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-            username: process.env.POSTGRES_USER || 'postgres',
-            password: process.env.POSTGRES_PASSWORD || 'postgrespassword',
-            database: process.env.POSTGRES_DB || 'music_folder',
-          }),
+        : dbType === 'sqlite'
+          ? { database: sqlitePath }
+          : {
+              host: process.env.POSTGRES_HOST || 'localhost',
+              port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+              username: process.env.POSTGRES_USER || 'postgres',
+              password: process.env.POSTGRES_PASSWORD || 'postgrespassword',
+              database: process.env.POSTGRES_DB || 'music_folder',
+            }),
       entities: [User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification, Group, GroupMember, GroupLibraryItem, GroupRehearsal, GroupCommunityPost],
       synchronize: true,
+      logging: false,
     }),
     TypeOrmModule.forFeature([User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification, Group, GroupMember, GroupLibraryItem, GroupRehearsal, GroupCommunityPost]),
     AuthModule,

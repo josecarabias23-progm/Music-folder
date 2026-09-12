@@ -59,7 +59,7 @@ export class Sheet {
   @Column('varchar', { nullable: true })
   difficulty_level: SheetDifficultyLevel | string | null;
 
-  @Column('jsonb', { nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   tags: string[] | null;
 
   @Column('boolean', { default: false })

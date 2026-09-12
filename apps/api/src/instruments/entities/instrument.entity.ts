@@ -27,28 +27,28 @@ export class Instrument {
   @Column('boolean', { default: false })
   is_transposing: boolean;
 
-  @Column('jsonb')
+  @Column({ type: 'simple-json' })
   range: {
     lowest_note: string;
     highest_note: string;
   };
 
-  @Column('jsonb')
+  @Column({ type: 'simple-json' })
   concert_range: {
     lowest_note: string;
     highest_note: string;
   };
 
-  @Column('jsonb')
+  @Column({ type: 'simple-json' })
   clef: string[];
 
-  @Column('jsonb')
+  @Column({ type: 'simple-json' })
   dynamic_range: {
     softest: string;
     loudest: string;
   };
 
-  @Column('jsonb')
+  @Column({ type: 'simple-json' })
   techniques: string[];
 
   @Column('text', { nullable: true })
@@ -57,7 +57,7 @@ export class Instrument {
   @Column('text', { nullable: true })
   historical_info: string;
 
-  @Column('jsonb', { nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   notable_repertoire: string[];
 
   @CreateDateColumn()
