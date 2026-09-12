@@ -9,7 +9,7 @@ export class Notification {
   userId: string;
 
   @Column({ type: 'varchar', length: 50 })
-  type: 'rehearsal_scheduled' | 'sheet_uploaded' | 'attendance_marked';
+  type: 'rehearsal_scheduled' | 'sheet_uploaded' | 'attendance_marked' | 'student_joined';
 
   @Column({ type: 'varchar', length: 150 })
   title: string;

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
+import { Notification } from '../notifications/entities/notification.entity';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
 
@@ -14,6 +15,8 @@ export class GroupsService {
     private readonly groupMemberRepository: Repository<GroupMember>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Notification)
+    private readonly notificationRepository: Repository<Notification>,
   ) {}
 
   private generateJoinCode(): string {
@@ -72,8 +75,12 @@ export class GroupsService {
     return createdGroup;
   }
 
-  async findAll(): Promise<Group[]> {
-    return this.groupRepository.find({ relations: ['owner'] });
+  async findAll(userId?: string): Promise<Group[]> {
+    if (!userId) {
+      return [];
+    }
+
+    return this.findUserGroups(userId);
   }
 
   async findOne(id: string): Promise<Group> {
@@ -192,6 +199,27 @@ export class GroupsService {
       status: 'active',
     });
 
-    return this.groupMemberRepository.save(member);
+    const savedMember = await this.groupMemberRepository.save(member);
+
+    if (group.owner?.id) {
+      const studentName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email.split('@')[0];
+      await this.notificationRepository.save(
+        this.notificationRepository.create({
+          userId: group.owner.id,
+          type: 'student_joined',
+          title: 'Nuevo alumno en tu grupo',
+          message: `${studentName} se unió a ${group.name}.`,
+          targetId: group.id,
+          metadata: {
+            groupId: group.id,
+            groupName: group.name,
+            studentId: user.id,
+            studentName,
+          },
+        }),
+      );
+    }
+
+    return savedMember;
   }
 }

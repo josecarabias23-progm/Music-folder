@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
@@ -23,8 +23,8 @@ export class GroupsController {
   }
 
   @Get()
-  async findAll(): Promise<Group[]> {
-    return this.groupsService.findAll();
+  async findAll(@Query('userId') userId?: string): Promise<Group[]> {
+    return this.groupsService.findAll(userId);
   }
 
   @Get('user/:userId')

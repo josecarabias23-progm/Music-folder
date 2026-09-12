@@ -21,6 +21,10 @@ type AssistantMessage = {
 const STORAGE_KEY = 'music-folder-session';
 const NOTIFICATIONS_STORAGE_KEY = 'music-folder-notifications';
 
+function getNotificationsStorageKey(userId?: string) {
+  return userId ? `${NOTIFICATIONS_STORAGE_KEY}-${userId}` : `${NOTIFICATIONS_STORAGE_KEY}-guest`;
+}
+
 function getStoredUser(): SessionUser | null {
   if (typeof window === 'undefined') return null;
   const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -33,9 +37,10 @@ function getStoredUser(): SessionUser | null {
   }
 }
 
-function getStoredNotifications(): NotificationItem[] {
+function getStoredNotifications(userId?: string): NotificationItem[] {
   if (typeof window === 'undefined') return [];
-  const raw = window.localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+  const key = getNotificationsStorageKey(userId);
+  const raw = window.localStorage.getItem(key);
   if (!raw) return [];
 
   try {
@@ -128,7 +133,7 @@ export default function App() {
   const [groupWorkspaceTab, setGroupWorkspaceTab] = useState<'resumen' | 'biblioteca' | 'ensayos' | 'comunidad'>('resumen');
 
   // Notifications state
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => getStoredNotifications());
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<'todas' | 'ensayos' | 'partituras' | 'asistencia'>('todas');
   const [toastMessage, setToastMessage] = useState<{ title: string; body: string; icon: string } | null>(null);
@@ -198,14 +203,21 @@ export default function App() {
       api.getGroups().then(setGroups);
     }
 
-    const storedNotifications = getStoredNotifications();
+    if (!sessionUser?.id) {
+      setNotifications([]);
+      return;
+    }
+
+    const storedNotifications = getStoredNotifications(sessionUser.id);
     if (storedNotifications.length > 0) {
       setNotifications(storedNotifications);
       return;
     }
 
-    api.getNotifications().then((data) => {
-      if (data && data.length > 0) setNotifications(data);
+    api.getNotifications(sessionUser.id).then((data) => {
+      if (data && data.length > 0) {
+        setNotifications(data);
+      }
     });
   }, [sessionUser?.id]);
 
@@ -231,9 +243,13 @@ export default function App() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+      if (sessionUser?.id) {
+        window.localStorage.setItem(getNotificationsStorageKey(sessionUser.id), JSON.stringify(notifications));
+      } else {
+        window.localStorage.removeItem(getNotificationsStorageKey());
+      }
     }
-  }, [notifications]);
+  }, [notifications, sessionUser?.id]);
 
   // Toast Auto-Hide
   useEffect(() => {
@@ -251,7 +267,7 @@ export default function App() {
   };
 
   const handleMarkAllAsRead = async () => {
-    await api.markAllNotificationsAsRead();
+    await api.markAllNotificationsAsRead(sessionUser?.id);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
@@ -383,6 +399,7 @@ export default function App() {
 
   const handleLogout = () => {
     window.localStorage.removeItem(STORAGE_KEY);
+    setNotifications([]);
     setSessionUser(null);
     setView('inicio');
   };
@@ -641,9 +658,9 @@ export default function App() {
   });
 
   const filteredNotifications = notifications.filter((n) => {
-    if (notifFilter === 'ensayos') return n.type === 'rehearsal_scheduled';
+    if (notifFilter === 'ensayos') return n.type === 'rehearsal_scheduled' || n.type === 'student_joined';
     if (notifFilter === 'partituras') return n.type === 'sheet_uploaded';
-    if (notifFilter === 'asistencia') return n.type === 'attendance_marked';
+    if (notifFilter === 'asistencia') return n.type === 'attendance_marked' || n.type === 'student_joined';
     return true;
   });
 
@@ -996,6 +1013,7 @@ export default function App() {
                             {notif.type === 'rehearsal_scheduled' && '🗓️'}
                             {notif.type === 'sheet_uploaded' && '🎼'}
                             {notif.type === 'attendance_marked' && '✅'}
+                            {notif.type === 'student_joined' && '👤'}
                           </div>
                           <div className="notif-content">
                             <div className="notif-item-top">
@@ -1003,6 +1021,7 @@ export default function App() {
                                 {notif.type === 'rehearsal_scheduled' && 'Ensayo'}
                                 {notif.type === 'sheet_uploaded' && 'Partitura'}
                                 {notif.type === 'attendance_marked' && 'Asistencia'}
+                                {notif.type === 'student_joined' && 'Alumno'}
                               </span>
                               <span className="notif-time">{notif.timestamp}</span>
                             </div>

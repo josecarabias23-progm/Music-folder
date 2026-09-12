@@ -50,7 +50,7 @@ export interface ForumThread {
 
 export interface NotificationItem {
   id: string;
-  type: 'rehearsal_scheduled' | 'sheet_uploaded' | 'attendance_marked';
+  type: 'rehearsal_scheduled' | 'sheet_uploaded' | 'attendance_marked' | 'student_joined';
   title: string;
   message: string;
   timestamp: string;
@@ -427,8 +427,9 @@ export const api = {
     });
   },
 
-  async getNotifications(): Promise<NotificationItem[]> {
-    const data = await fetchJSON<NotificationItem[]>('/notifications');
+  async getNotifications(userId?: string): Promise<NotificationItem[]> {
+    const endpoint = userId ? `/notifications?userId=${encodeURIComponent(userId)}` : '/notifications';
+    const data = await fetchJSON<NotificationItem[]>(endpoint);
     return data || fallbackNotifications;
   },
 
@@ -437,8 +438,8 @@ export const api = {
     return res ? res.success : true;
   },
 
-  async markAllNotificationsAsRead(): Promise<boolean> {
-    const res = await fetchJSON<{ success: boolean }>('/notifications/read-all', { method: 'PATCH' });
+  async markAllNotificationsAsRead(userId?: string): Promise<boolean> {
+    const res = await fetchJSON<{ success: boolean }>(userId ? `/notifications/read-all?userId=${encodeURIComponent(userId)}` : '/notifications/read-all', { method: 'PATCH' });
     return res ? res.success : true;
   },
 
