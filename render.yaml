@@ -7,14 +7,56 @@ services:
     repo: https://github.com/josecarabias23-progm/Music-folder.git
     branch: main
     dockerfilePath: apps/api/Dockerfile
-    healthCheckPath: /health
+    healthCheckPath: /api/v1/health
+    # El esquema de la base se aplica con migraciones versionadas ANTES de que la
+    # versión nueva reciba tráfico. Si la migración falla, el deploy se aborta y la
+    # versión anterior sigue sirviendo (la migración inicial es idempotente).
+    preDeployCommand: npm --workspace apps/api run migration:run
     envVars:
       - key: NODE_ENV
         value: production
+      # Secreto de firma de los JWT. Render lo genera automáticamente.
+      # En producción el arranque FALLA si no está definido (ver jwt.config.ts).
+      - key: JWT_SECRET
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: music-folder-db
           property: connectionString
+      # Lista blanca de CORS (obligatoria en producción). Se toma el host público
+      # del servicio web para no depender de orígenes hardcodeados; el backend
+      # agrega el esquema https:// si falta (ver resolveCorsOrigins en main.ts).
+      - key: CORS_ORIGINS
+        fromService:
+          name: music-folder-web
+          type: web
+          property: host
+      # El esquema se gestiona con migraciones: la API ya no altera tablas al
+      # arrancar (evita DDL destructivo automático).
+      - key: DB_SYNCHRONIZE
+        value: "false"
+      # Almacenamiento de partituras. `local` requiere un disco persistente
+      # (planes pagos de Render); para el plan free usar `s3` con Cloudflare R2
+      # (ver STORAGE_DRIVER y S3_* más abajo).
+      - key: STORAGE_DRIVER
+        value: local
+      - key: UPLOADS_DIR
+        value: /app/uploads
+      # Opcionales: sólo se usan cuando STORAGE_DRIVER=s3.
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_FORCE_PATH_STYLE
+        sync: false
+      - key: S3_PREFIX
+        sync: false
       - key: POSTGRES_HOST
         fromDatabase:
           name: music-folder-db
@@ -44,6 +86,15 @@ services:
     repo: https://github.com/josecarabias23-progm/Music-folder.git
     branch: main
     dockerfilePath: apps/web/Dockerfile
+    healthCheckPath: /
+    envVars:
+      # Vite resuelve esta variable durante el build de la imagen, por lo que el
+      # valor queda fijado en el bundle. Se toma el host del servicio API.
+      - key: VITE_API_URL
+        fromService:
+          name: music-folder-api
+          type: web
+          property: host
 
 databases:
   - name: music-folder-db

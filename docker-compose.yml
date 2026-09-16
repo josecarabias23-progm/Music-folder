@@ -15,6 +15,13 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db/schema.postgres.sql:/docker-entrypoint-initdb.d/01-schema.sql:z
       - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:z
+    healthcheck:
+      # La API no debe arrancar hasta que Postgres acepte conexiones.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d music_folder"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   api:
     build:
@@ -26,6 +33,7 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=development
+      - JWT_SECRET=dev-secret-local-compose-change-me
       - DB_TYPE=postgres
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -33,19 +41,33 @@ services:
       - POSTGRES_PASSWORD=postgrespassword
       - POSTGRES_DB=music_folder
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # `wget` viene en la base de Alpine (busybox) y no requiere instalar nada.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # Vite resuelve VITE_API_URL en tiempo de build: como variable de runtime
+      # no tiene efecto y el bundle apuntaba a la API de producción.
+      args:
+        VITE_API_URL=http://localhost:3001
     container_name: music-folder-web
     ports:
       - "5173:5173"
     environment:
       - VITE_API_URL=http://localhost:3001
+      - PORT=5173
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:

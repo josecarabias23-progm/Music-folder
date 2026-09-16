@@ -1142,6 +1142,13 @@ button.btn-danger {
   text-transform: uppercase;
 }
 
+.login-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .login-submit {
   width: 100%;
   padding: 10px 14px;

@@ -1,50 +1,48 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { promises as fsPromises, createReadStream } from 'fs';
-import { join, extname } from 'path';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  DownloadTarget,
+  IncomingFile,
+  StorageAdapter,
+  StoredFileInfo,
+} from './storage.interface';
 
-export interface StoredFileInfo {
-  url: string;
-  size: number;
-  format: string;
-  path: string;
-}
+/** Token de inyección del adaptador activo (ver `StorageModule`). */
+export const STORAGE_ADAPTER = 'STORAGE_ADAPTER';
 
+/**
+ * Fachada de almacenamiento que consume la aplicación.
+ *
+ * Desacopla a los controladores del medio concreto: sólo conocen `saveFile` y
+ * `resolveDownload`, mientras que el adaptador (disco local o S3/R2) se elige por
+ * configuración (`STORAGE_DRIVER`). Antes esta clase leía el disco directamente
+ * con `fs.existsSync`, lo que ataba la descarga a la ruta local del contenedor.
+ *
+ * Nota: `StoredFileInfo` se re-exporta desde `storage.interface` para no romper
+ * los imports existentes (`{ StoredFileInfo } from './storage.service'`).
+ */
 @Injectable()
-export class LocalStorageService {
-  private readonly logger = new Logger(LocalStorageService.name);
-  private readonly basePath = process.env.UPLOADS_DIR || './uploads';
+export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
 
-  constructor() {
-    // Ensure base dir exists
-    fsPromises.mkdir(this.basePath, { recursive: true }).catch((err) => {
-      this.logger.error('Could not create uploads directory', err?.message || err);
-    });
+  constructor(@Inject(STORAGE_ADAPTER) private readonly adapter: StorageAdapter) {
+    this.logger.log(`Almacenamiento de partituras: driver "${this.adapter.driver}"`);
   }
 
-  async saveFile(file: any, prefix = 'file'): Promise<StoredFileInfo> {
-    const ext = extname(file.originalname) || '';
-    const filename = `${prefix}-${Date.now()}${ext}`;
-    const dest = join(this.basePath, filename);
-    if (file.buffer && file.buffer.length) {
-      await fsPromises.writeFile(dest, file.buffer);
-    } else if ((file as any).path) {
-      // multer wrote a temp file to disk; move it
-      const tempPath = (file as any).path as string;
-      await fsPromises.rename(tempPath, dest);
-    } else {
-      // fallback: try to write empty buffer
-      await fsPromises.writeFile(dest, '');
-    }
-
-    return {
-      url: dest,
-      path: dest,
-      size: file.size || (await fsPromises.stat(dest)).size,
-      format: (ext.replace('.', '') || file.mimetype) as string,
-    };
+  get driver(): string {
+    return this.adapter.driver;
   }
 
-  createReadStream(filePath: string) {
-    return createReadStream(filePath);
+  saveFile(file: IncomingFile, prefix?: string): Promise<StoredFileInfo> {
+    return this.adapter.saveFile(file, prefix);
+  }
+
+  resolveDownload(reference: string): Promise<DownloadTarget | null> {
+    return this.adapter.resolveDownload(reference);
+  }
+
+  deleteFile(reference: string): Promise<void> {
+    return this.adapter.deleteFile(reference);
   }
 }
+
+export type { DownloadTarget, IncomingFile, StorageAdapter, StoredFileInfo };

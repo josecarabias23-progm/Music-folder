@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Sheet } from './entities/sheet.entity';
 import { SheetUploadedEvent } from '../notifications/events/sheet-uploaded.event';
+import { StorageService } from '../storage/storage.service';
 
 export interface ScoreItem {
   id: string;
@@ -23,6 +24,7 @@ export class SheetsService {
     @InjectRepository(Sheet)
     private readonly sheetRepository: Repository<Sheet>,
     private readonly eventEmitter: EventEmitter2,
+    private readonly storageService: StorageService,
   ) {}
 
   private mapSheetToScoreItem(sheet: Sheet): ScoreItem {
@@ -122,15 +124,28 @@ export class SheetsService {
     return score;
   }
 
-  async getFilePath(id: string): Promise<string | null> {
+  /**
+   * Referencia del archivo tal como la guarda el adaptador de almacenamiento
+   * (ruta local o clave del objeto en S3/R2). Nunca se expone al cliente.
+   */
+  async getStoredReference(id: string): Promise<string | null> {
     const sheet = await this.sheetRepository.findOne({ where: { id } });
     if (!sheet) return null;
     return sheet.file_url || null;
   }
 
   async remove(id: string): Promise<{ success: boolean }> {
-    const result = await this.sheetRepository.delete(id);
-    if (!result.affected) throw new NotFoundException(`Sheet ${id} not found`);
+    const sheet = await this.sheetRepository.findOne({ where: { id } });
+    if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
+
+    await this.sheetRepository.delete(id);
+
+    // Limpieza del archivo asociado. `deleteFile` ignora las referencias externas
+    // (URLs) y nunca lanza: un fallo aquí no debe revertir el borrado del registro.
+    if (sheet.file_url) {
+      await this.storageService.deleteFile(sheet.file_url);
+    }
+
     return { success: true };
   }
 }

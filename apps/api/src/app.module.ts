@@ -1,7 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -16,9 +15,10 @@ import { SheetsController } from './sheets/sheets.controller';
 import { PublicScoresController } from './public-scores/public-scores.controller';
 import { SheetsService } from './sheets/sheets.service';
 import { PublicScoresService } from './public-scores/public-scores.service';
-import { LocalStorageService } from './storage/storage.service';
+import { StorageModule } from './storage/storage.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { GroupsModule } from './groups/groups.module';
+import { buildDataSourceOptions, resolveSynchronize } from './config/database.config';
 
 import { User } from './auth/entities/user.entity';
 import { Instrument } from './instruments/entities/instrument.entity';
@@ -33,34 +33,33 @@ import { GroupLibraryItem } from './groups/entities/group-library-item.entity';
 import { GroupRehearsal } from './groups/entities/group-rehearsal.entity';
 import { GroupCommunityPost } from './groups/group-community.entity';
 
-const databaseUrl = process.env.DATABASE_URL;
-const dbType = process.env.DB_TYPE || (databaseUrl ? 'postgres' : 'sqlite');
-const sqlitePath = process.env.SQLITE_DB_PATH || path.resolve(process.cwd(), 'db', 'music-folder.sqlite');
+// Conexión y esquema: estas funciones son las MISMAS que usa el CLI de migraciones
+// (src/config/typeorm.datasource.ts), de modo que la aplicación y las migraciones
+// no puedan desincronizarse.
+const synchronize = resolveSynchronize();
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (synchronize && isProduction) {
+  new Logger('TypeOrmConfig').warn(
+    'synchronize=true en producción: TypeORM alterará el esquema en cada arranque. Las migraciones se aplican en preDeployCommand; definí DB_SYNCHRONIZE=false.',
+  );
+}
 
 @Module({
   imports: [
     EventEmitterModule.forRoot(),
     TypeOrmModule.forRoot({
-      type: dbType === 'sqlite' ? 'sqlite' : 'postgres',
-      ...(databaseUrl
-        ? { url: databaseUrl }
-        : dbType === 'sqlite'
-          ? { database: sqlitePath }
-          : {
-              host: process.env.POSTGRES_HOST || 'localhost',
-              port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
-              username: process.env.POSTGRES_USER || 'postgres',
-              password: process.env.POSTGRES_PASSWORD || 'postgrespassword',
-              database: process.env.POSTGRES_DB || 'music_folder',
-            }),
-      entities: [User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification, Group, GroupMember, GroupLibraryItem, GroupRehearsal, GroupCommunityPost],
-      synchronize: true,
+      ...buildDataSourceOptions(),
+      // El esquema se gestiona con migraciones (ver preDeployCommand en render.yaml).
+      // `DB_SYNCHRONIZE=true` sólo debería usarse en entornos de desarrollo.
+      synchronize,
       logging: false,
     }),
     TypeOrmModule.forFeature([User, Instrument, Sheet, RehearsalLog, ForumThread, ForumComment, Notification, Group, GroupMember, GroupLibraryItem, GroupRehearsal, GroupCommunityPost]),
     AuthModule,
     NotificationsModule,
     GroupsModule,
+    StorageModule,
   ],
   controllers: [
     AppController,
@@ -73,7 +72,6 @@ const sqlitePath = process.env.SQLITE_DB_PATH || path.resolve(process.cwd(), 'db
   providers: [
     AppService,
     SheetsService,
-    LocalStorageService,
     PublicScoresService,
     InstrumentsService,
     InstrumentsSeedService,

@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { RecordsService } from './records.service';
+import { Roles } from '../auth/roles.decorator';
 
 @Controller('records')
 @ApiTags('Records')
@@ -14,7 +15,8 @@ export class RecordsController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Crear un registro de ensayo de prueba' })
+  @Roles('admin', 'director')
+  @ApiOperation({ summary: 'Crear un registro de ensayo (sólo dirección/administración)' })
   @ApiBody({ schema: { example: { title: 'Ensayo general', artist: 'Orquesta Municipal', date: '2026-07-28' } } })
   create(@Body() body: { title: string; artist: string; date: string }) {
     return this.recordsService.create(body);
@@ -26,10 +28,12 @@ export class RecordsController {
   findOne(@Param('id') id: string) { return this.recordsService.findOne(id); }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar un registro de ensayo temporal' })
+  @Roles('admin', 'director')
+  @ApiOperation({ summary: 'Actualizar un registro de ensayo (sólo dirección/administración)' })
   update(@Param('id') id: string, @Body() body: Partial<{ title: string; artist: string; date: string }>) { return this.recordsService.update(id, body); }
 
   @Post(':id/attendance')
+  @Roles('admin', 'director')
   @ApiOperation({ summary: 'Registrar asistencia de un músico y notificar' })
   @ApiParam({ name: 'id', example: '1' })
   @ApiBody({ schema: { example: { userId: 'usr-1', userName: 'Sofía Martínez', status: 'presente' } } })
@@ -37,11 +41,18 @@ export class RecordsController {
     @Param('id') id: string,
     @Body() body: { userId: string; userName: string; status: 'presente' | 'ausente' | 'justificado' },
   ) {
+    // `body.userId` es el SUJETO del registro (a quién se le toma asistencia),
+    // no el actor: por eso se conserva. El ACTOR sale del token y debe tener rol
+    // de dirección/administración (@Roles): antes cualquier usuario podía marcar
+    // la asistencia de terceros.
     return this.recordsService.recordAttendance(id, body.userId, body.userName, body.status);
   }
 
-  @Delete(':id')
+@Delete(':id')
+  @Roles('admin', 'director')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Eliminar un registro de ensayo temporal' })
-  remove(@Param('id') id: string) { return this.recordsService.remove(id); }
+  @ApiOperation({ summary: 'Eliminar un registro de ensayo' })
+  remove(@Param('id') id: string) {
+    return this.recordsService.remove(id);
+  }
 }

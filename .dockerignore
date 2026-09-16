@@ -7,3 +7,21 @@ dist
 .claude
 .codex
 .cursor
+
+# Secretos: nunca deben entrar en el contexto de build ni en las capas de la imagen.
+.env
+.env.*
+!.env.example
+apps/web/.env
+apps/web/.env.*
+!apps/web/.env.example
+
+# Datos locales (los PDF subidos viven en el volumen/disco, no en la imagen).
+uploads
+apps/api/uploads
+db/*.sqlite
+
+# Documentación y especificaciones fuera del runtime.
+openspec
+history
+

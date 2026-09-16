@@ -112,8 +112,7 @@ export interface GroupCommunityPost {
   author?: { id?: string; name?: string; email?: string } | null;
 }
 
-const API_BASE = (import.meta.env.VITE_API_URL || 'https://music-folder-api.onrender.com') + '/api/v1';
-
+const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://music-folder-api.onrender.com');
 async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   try {
     const res = await fetch(`${API_BASE}${endpoint}`, {

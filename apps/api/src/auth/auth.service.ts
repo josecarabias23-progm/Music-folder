@@ -1,20 +1,26 @@
 import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { JWT_AUDIENCE, JWT_EXPIRES_IN, JWT_ISSUER } from './jwt.config';
 
-export interface UserRecord {
+/** Coste de bcrypt (2^10 iteraciones). */
+const BCRYPT_ROUNDS = 10;
+
+/** Los hashes bcrypt empiezan por $2a$/$2b$/$2y$; cualquier otro valor es legado. */
+const BCRYPT_HASH_PATTERN = /^\$2[aby]\$/;
+
+/** Datos de usuario que se devuelven al cliente (nunca el hash de la contraseña). */
+export interface PublicUser {
   id: string;
+  name: string;
   email: string;
-  username: string;
-  password_hash: string;
-  first_name: string;
-  last_name: string;
   role: string;
   instrument_primary: string;
-  created_at: Date;
 }
 
 @Injectable()
@@ -22,6 +28,7 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly jwtService: JwtService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -38,13 +45,19 @@ export class AuthService {
       throw new ConflictException('El correo electrónico ya se encuentra registrado');
     }
 
-    const role = dto.role || 'Músico / Instrumentista';
+    // El rol NO se toma del cliente: auto-asignarse 'Director / Conductor' habilitaba
+    // crear grupos y regenerar códigos de invitación (ver GroupsService.createGroup).
+    // TODO(Fase 2): tabla de roles + flujo de aprobación por un administrador.
+    const role = 'Músico / Instrumentista';
     const instrumentPrimary = dto.instrument_primary || 'Violín';
+
+    // Nunca se persiste la contraseña en claro: se guarda el hash bcrypt (coste 10).
+    const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
     const user = this.userRepository.create({
       email,
       username,
-      password_hash: dto.password,
+      password_hash: passwordHash,
       first_name: firstName,
       last_name: lastName,
       role,
@@ -53,62 +66,91 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
-    const fullName = `${savedUser.first_name || ''} ${savedUser.last_name || ''}`.trim();
 
     return {
       success: true,
       message: 'Usuario registrado correctamente',
-      user: {
-        id: savedUser.id,
-        name: fullName,
-        email: savedUser.email,
-        role: savedUser.role,
-        instrument_primary: savedUser.instrument_primary,
-      },
-      token: `token_${savedUser.id}`,
+      user: this.toPublicUser(savedUser),
+      token: await this.signToken(savedUser),
     };
   }
 
   async login(dto: LoginDto) {
     const email = dto.email.trim().toLowerCase();
-    let user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository.findOne({ where: { email } });
 
+    // El login NUNCA crea cuentas: antes, un email desconocido auto-creaba un
+    // usuario con rol 'Director / Conductor', lo que permitía obtener privilegios
+    // sin verificar identidad. Las cuentas se crean sólo vía /auth/register.
     if (!user) {
-      const name = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-      const parts = name.split(' ');
-      const firstName = parts[0] || name;
-      const lastName = parts.slice(1).join(' ') || '';
-
-      user = this.userRepository.create({
-        email,
-        username: email.split('@')[0],
-        password_hash: dto.password,
-        first_name: firstName,
-        last_name: lastName,
-        role: 'Director / Conductor',
-        instrument_primary: 'Tutti',
-        is_active: true,
-      });
-      user = await this.userRepository.save(user);
-    } else {
-      if (user.password_hash && user.password_hash !== dto.password) {
-        throw new UnauthorizedException('Contraseña incorrecta. Por favor, intentalo de nuevo.');
-      }
+      throw new UnauthorizedException('Credenciales inválidas. Verificá tu correo y contraseña.');
     }
 
-    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email.split('@')[0];
+    if (!user.is_active) {
+      throw new UnauthorizedException('La cuenta se encuentra desactivada.');
+    }
+
+    if (!user.password_hash) {
+      throw new UnauthorizedException('Credenciales inválidas. Verificá tu correo y contraseña.');
+    }
+
+    // La contraseña se compara contra el hash bcrypt, nunca en texto plano.
+    const passwordMatches = await this.verifyPassword(dto.password, user);
+    if (!passwordMatches) {
+      throw new UnauthorizedException('Credenciales inválidas. Verificá tu correo y contraseña.');
+    }
 
     return {
       success: true,
-      user: {
-        id: user.id,
-        name: fullName,
-        email: user.email,
-        role: user.role || 'Músico',
-        instrument_primary: user.instrument_primary || 'Tutti',
-      },
-      token: `token_${user.id}`,
+      user: this.toPublicUser(user),
+      token: await this.signToken(user),
     };
+  }
+
+  /** Emite un JWT firmado, con la identidad que valida `JwtStrategy`. */
+  private async signToken(user: User): Promise<string> {
+    return this.jwtService.signAsync(
+      { sub: user.id, email: user.email, role: user.role },
+      { expiresIn: JWT_EXPIRES_IN, issuer: JWT_ISSUER, audience: JWT_AUDIENCE },
+    );
+  }
+
+  private toPublicUser(user: User): PublicUser {
+    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email.split('@')[0];
+
+    return {
+      id: user.id,
+      name: fullName,
+      email: user.email,
+      role: user.role || 'Músico',
+      instrument_primary: user.instrument_primary || 'Tutti',
+    };
+  }
+
+  /**
+   * Verifica la contraseña contra el hash almacenado.
+   *
+   * Compatibilidad temporal: las filas creadas antes de la Fase 1 guardan la
+   * contraseña en texto plano (por ejemplo el seed con 'demo123'). En ese caso se
+   * compara una única vez y, si coincide, se reescribe el hash bcrypt para dejar
+   * la fila migrada sin bloquear el acceso del usuario.
+   * TODO(Fase 2): eliminar esta rama cuando no queden hashes legados
+   * (`SELECT count(*) FROM users WHERE password_hash NOT LIKE '$2%'`).
+   */
+  private async verifyPassword(plainPassword: string, user: User): Promise<boolean> {
+    const storedHash = user.password_hash;
+
+    if (BCRYPT_HASH_PATTERN.test(storedHash)) {
+      return bcrypt.compare(plainPassword, storedHash);
+    }
+
+    if (storedHash !== plainPassword) {
+      return false;
+    }
+
+    user.password_hash = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
+    await this.userRepository.save(user);
+    return true;
   }
 
   async getUsers() {

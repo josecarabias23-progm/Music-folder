@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
+import { isDirectorRole } from '../auth/roles.util';
 import { Notification } from '../notifications/entities/notification.entity';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
@@ -18,19 +19,6 @@ export class GroupsService {
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
   ) {}
-
-  private isDirectorRole(role?: string | null): boolean {
-    const normalized = (role ?? '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
-
-    if (!normalized) return false;
-
-    return ['director', 'conductor', 'gestor', 'coordinador', 'administrador', 'jefe de cuerda'].some((token) => normalized.includes(token));
-  }
 
   private generateJoinCode(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -57,7 +45,7 @@ export class GroupsService {
       throw new NotFoundException(`User ${payload.ownerId} not found`);
     }
 
-    if (!this.isDirectorRole(owner.role)) {
+    if (!isDirectorRole(owner.role)) {
       throw new ForbiddenException('Only director-role users can create groups');
     }
 
@@ -124,6 +112,22 @@ export class GroupsService {
       relations: ['user', 'group'],
       order: { joined_at: 'DESC' },
     });
+  }
+
+  /**
+   * Igual que `findOne`, pero exigiendo que el usuario autenticado sea miembro:
+   * el grupo expone su `join_code`, así que un no-miembro podría usarlo para
+   * unirse a una agrupación privada.
+   */
+  async findOneForMember(id: string, userId: string): Promise<Group> {
+    await this.assertGroupAccess(userId, id);
+    return this.findOne(id);
+  }
+
+  /** Igual que `findMembers`, pero limitado a miembros del grupo. */
+  async findMembersForMember(groupId: string, userId: string): Promise<GroupMember[]> {
+    await this.assertGroupAccess(userId, groupId);
+    return this.findMembers(groupId);
   }
 
   async findUserGroups(userId: string): Promise<Group[]> {
