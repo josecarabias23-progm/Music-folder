@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, ForumThread, GroupItem, InstrumentItem, NotificationItem, RehearsalRecord, ScoreItem } from './api';
 import { initializeGoogleStitch, listGoogleStitchTools, StitchTool } from './stitch';
+import { usePWA } from './usePWA';
 
 type View = 'inicio' | 'biblioteca' | 'ensayos' | 'instrumentos' | 'foro';
 
@@ -96,6 +97,7 @@ const titles: Record<View, [string, string]> = {
 };
 
 export default function App() {
+  const { canInstall, promptInstall, hasUpdate, isUpdating, updateApp, checkForUpdates } = usePWA();
   const [view, setView] = useState<View>('inicio');
   const [menuOpen, setMenuOpen] = useState(false);
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(() => getStoredUser());
@@ -902,6 +904,22 @@ export default function App() {
 
   return (
     <div className={`app-shell role-${isDirector ? 'director' : 'musician'}`} data-role={isDirector ? 'director' : 'musician'}>
+      {/* PWA Floating Update Banner */}
+      {hasUpdate && (
+        <div className="pwa-update-banner">
+          <div className="pwa-update-content">
+            <span className="pwa-update-icon">⚡</span>
+            <div>
+              <strong>¡Nueva actualización disponible!</strong>
+              <p>Hay una nueva versión de Music Folder lista. Cliqueá para actualizar el sitio inmediatamente.</p>
+            </div>
+          </div>
+          <button className="pwa-update-action-btn" onClick={updateApp} disabled={isUpdating}>
+            {isUpdating ? 'Actualizando...' : 'Actualizar sitio'}
+          </button>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className={menuOpen ? 'sidebar open' : 'sidebar'}>
         <div className="brand">
@@ -943,6 +961,36 @@ export default function App() {
           </div>
           <div className="header-actions">
             <span className={`role-badge ${isDirector ? 'director' : 'musician'}`}>{roleLabel}</span>
+
+            {/* PWA Action Controls */}
+            {canInstall && (
+              <button
+                className="pwa-install-btn"
+                title="Instalar Music Folder en tu dispositivo"
+                onClick={promptInstall}
+              >
+                📲 Instalar App
+              </button>
+            )}
+
+            {hasUpdate && (
+              <button
+                className="pwa-update-btn-header"
+                title="Nueva actualización lista. Cliqueá para actualizar."
+                onClick={updateApp}
+              >
+                🔄 Actualizar App
+              </button>
+            )}
+
+            <button
+              title="Comprobar actualizaciones"
+              onClick={checkForUpdates}
+              className="pwa-check-updates-btn"
+            >
+              🔄
+            </button>
+
             <button title="Búsqueda rápida">⌕</button>
 
             <div
