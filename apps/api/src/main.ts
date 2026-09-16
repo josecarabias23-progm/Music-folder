@@ -78,24 +78,16 @@ async function bootstrap() {
     }),
   );
 
-  // La documentación interactiva sólo se expone fuera de producción: publica la
-  // superficie completa de la API (endpoints, DTOs y esquemas) sin autenticación.
-  if (!isProduction) {
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('Music Folder API')
-      .setDescription('API para partituras, instrumentos, ensayos y foros.')
-      .setVersion('1.0')
-      .build();
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api/docs', app, document);
-  }
+// Documentación interactiva de Swagger
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Music Folder API')
+    .setDescription('API para partituras, instrumentos, ensayos y foros.')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document);
 
   const port = Number(process.env.PORT) || 3001;
   await app.listen(port, '0.0.0.0');
   logger.log(`API listening on http://localhost:${port}/api/v1`);
-  if (!isProduction) {
-    logger.log(`Swagger available at http://localhost:${port}/api/docs`);
-  }
-}
-
-bootstrap();
+  logger.log(`Swagger available at http://localhost:${port}/api/docs`);
