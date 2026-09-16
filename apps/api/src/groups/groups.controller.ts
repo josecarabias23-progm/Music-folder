@@ -50,7 +50,12 @@ export class GroupsController {
   async findUserGroups(@CurrentUser() user: AuthenticatedUser): Promise<Group[]> {
     return this.groupsService.findUserGroups(user.id);
   }
-
+@Get('user/:userId')
+  async findByUser(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<Group[]> {
+    return this.groupsService.findUserGroups(user.id);
+  }
   @Get(':id')
   async findOne(
     @Param('id') id: string,
