@@ -58,12 +58,12 @@ services:
       # Vite resuelve VITE_API_URL en tiempo de build: como variable de runtime
       # no tiene efecto y el bundle apuntaba a la API de producción.
       args:
-        VITE_API_URL=http://localhost:3001
+        VITE_API_URL: http://localhost:3001
     container_name: music-folder-web
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_URL=http://localhost:3001
+      - VITE_API_URL: http://localhost:3001
       - PORT=5173
     depends_on:
       api:
