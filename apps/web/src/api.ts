@@ -113,11 +113,36 @@ export interface GroupCommunityPost {
 }
 
 const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://music-folder-api.onrender.com');
+const STORAGE_KEY = 'music-folder-session';
+
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed) return null;
+    return parsed.token || (parsed.user && parsed.user.token) || null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options?.headers as Record<string, string> || {}),
+    };
+
+    const token = getAuthToken();
+    if (token && !headers['Authorization'] && !headers['authorization']) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${API_BASE}${endpoint}`, {
-      headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
       ...options,
+      headers,
     });
     if (!res.ok) return null;
     return await res.json();
@@ -250,7 +275,10 @@ export const api = {
     };
   },
   async deleteScore(id: string): Promise<boolean> {
-    const res = await fetch(`${API_BASE}/sheets/${id}`, { method: 'DELETE' });
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE}/sheets/${id}`, { method: 'DELETE', headers });
     return res.ok;
   },
 
@@ -258,8 +286,12 @@ export const api = {
     try {
       const fd = new FormData();
       fd.append('file', file, file.name);
+      const headers: Record<string, string> = {};
+      const token = getAuthToken();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(`${API_BASE}/sheets/${id}/upload`, {
         method: 'POST',
+        headers,
         body: fd,
       });
       if (!res.ok) return null;
@@ -273,27 +305,14 @@ export const api = {
     return `${API_BASE}/sheets/${id}/download`;
   },
   async searchPublicScores(q: string) {
-    try {
-      const res = await fetch(`${API_BASE}/public-scores/search?q=${encodeURIComponent(q)}`);
-      if (!res.ok) return null;
-      return (await res.json()) as any[];
-    } catch (err) {
-      return null;
-    }
+    return await fetchJSON<any[]>(`/public-scores/search?q=${encodeURIComponent(q)}`);
   },
 
   async importPublicScore(payload: { title: string; composer?: string; pdfUrl?: string; sourceUrl?: string; instrumentation?: string }) {
-    try {
-      const res = await fetch(`${API_BASE}/public-scores/import`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      return null;
-    }
+    return await fetchJSON<any>('/public-scores/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   },
 
   async getInstruments(): Promise<InstrumentItem[]> {

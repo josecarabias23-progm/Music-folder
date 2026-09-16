@@ -11,6 +11,7 @@ type SessionUser = {
   email: string;
   role?: string;
   instrument_primary?: string;
+  token?: string;
 };
 
 type AssistantMessage = {
@@ -32,7 +33,15 @@ function getStoredUser(): SessionUser | null {
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as SessionUser;
+    const parsed = JSON.parse(raw);
+    if (!parsed) return null;
+    if (parsed.user) {
+      return {
+        ...parsed.user,
+        token: parsed.token || parsed.user.token,
+      };
+    }
+    return parsed as SessionUser;
   } catch {
     return null;
   }
@@ -206,25 +215,22 @@ export default function App() {
 
     loadStitchStatus();
 
-    api.getScores().then(setScores);
-    api.getInstruments().then(setInstruments);
-    api.getRecords().then(setRecords);
-    api.getThreads().then(setThreads);
-    if (sessionUser?.id) {
-      api.getUserGroups(sessionUser.id).then((userGroups) => {
-        setGroups(userGroups);
-        if (userGroups.length > 0 && !selectedGroupId) {
-          setSelectedGroupId(userGroups[0].id);
-        }
-      });
-    } else {
-      api.getGroups().then(setGroups);
-    }
-
+    // Guard: Only fetch protected dashboard endpoints when user session is active
     if (!sessionUser?.id) {
       setNotifications([]);
       return;
     }
+
+    api.getScores().then(setScores);
+    api.getInstruments().then(setInstruments);
+    api.getRecords().then(setRecords);
+    api.getThreads().then(setThreads);
+    api.getUserGroups(sessionUser.id).then((userGroups) => {
+      setGroups(userGroups);
+      if (userGroups.length > 0 && !selectedGroupId) {
+        setSelectedGroupId(userGroups[0].id);
+      }
+    });
 
     const storedNotifications = getStoredNotifications(sessionUser.id);
     if (storedNotifications.length > 0) {
@@ -237,7 +243,7 @@ export default function App() {
         setNotifications(data);
       }
     });
-  }, [sessionUser?.id]);
+  }, [sessionUser?.id, sessionUser?.token]);
 
   useEffect(() => {
     if (!selectedGroupId || !sessionUser?.id) return;
@@ -339,12 +345,14 @@ export default function App() {
     try {
       const res = await api.loginUser({ email, password: loginForm.password });
       if (res && res.user) {
+        const token = res.token || (res.user as any).token;
         const nextUser: SessionUser = {
           id: res.user.id,
           name: res.user.name,
           email: res.user.email,
           role: res.user.role,
           instrument_primary: res.user.instrument_primary,
+          token,
         };
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
         setSessionUser(nextUser);
@@ -393,12 +401,14 @@ export default function App() {
       });
 
       if (res && res.user) {
+        const token = res.token || (res.user as any).token;
         const newUser: SessionUser = {
           id: res.user.id,
           name: res.user.name,
           email: res.user.email,
           role: res.user.role,
           instrument_primary: res.user.instrument_primary,
+          token,
         };
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
         setSessionUser(newUser);
