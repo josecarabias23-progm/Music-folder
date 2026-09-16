@@ -91,3 +91,6 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   logger.log(`API listening on http://localhost:${port}/api/v1`);
   logger.log(`Swagger available at http://localhost:${port}/api/docs`);
+}
+
+bootstrap();
