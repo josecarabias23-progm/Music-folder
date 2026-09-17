@@ -105,6 +105,37 @@ const titles: Record<View, [string, string]> = {
   foro: ['Foro de la comunidad', 'Comparte conocimiento con músicos y directores.'],
 };
 
+function parseRehearsalDateBadge(dateStr: string): { day: string; sub: string } {
+  if (!dateStr) return { day: '📅', sub: 'ENSAYO' };
+
+  const str = dateStr.trim();
+  const matchNum = str.match(/\b(\d{1,2})\b/);
+
+  if (matchNum) {
+    const day = matchNum[1];
+    let sub = 'ENSAYO';
+    if (/ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic/i.test(str)) {
+      const monthMatch = str.match(/(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i);
+      if (monthMatch) sub = monthMatch[1].toUpperCase();
+    } else if (str.toLowerCase().includes('mañana')) {
+      sub = 'MAÑANA';
+    } else if (str.toLowerCase().includes('hoy')) {
+      sub = 'HOY';
+    } else {
+      const wordMatch = str.replace(/\b\d{1,2}\b/g, '').trim().match(/[a-zA-ZáéíóúÁÉÍÓÚñÑ]+/);
+      if (wordMatch && wordMatch[0].length >= 3) {
+        sub = wordMatch[0].substring(0, 3).toUpperCase();
+      }
+    }
+    return { day, sub };
+  }
+
+  if (str.toLowerCase().includes('mañana')) return { day: '⚡', sub: 'MAÑANA' };
+  if (str.toLowerCase().includes('hoy')) return { day: '📍', sub: 'HOY' };
+
+  return { day: '📅', sub: str.substring(0, 4).toUpperCase() };
+}
+
 export default function App() {
   const { canInstall, promptInstall, hasUpdate, isUpdating, updateApp, checkForUpdates } = usePWA();
   const [view, setView] = useState<View>('inicio');
@@ -141,6 +172,27 @@ export default function App() {
   const [threads, setThreads] = useState<ForumThread[]>([]);
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [isRefreshingGroups, setIsRefreshingGroups] = useState(false);
+
+  const handleRefreshGroups = async () => {
+    setIsRefreshingGroups(true);
+    try {
+      if (sessionUser?.id) {
+        const userGroups = await api.getUserGroups(sessionUser.id);
+        setGroups(userGroups || []);
+        if (userGroups && userGroups.length > 0 && !selectedGroupId) {
+          setSelectedGroupId(userGroups[0].id);
+        }
+      } else {
+        const allGroups = await api.getGroups();
+        setGroups(allGroups || []);
+      }
+    } catch (err) {
+      console.error('Error refreshing groups:', err);
+    } finally {
+      setTimeout(() => setIsRefreshingGroups(false), 400);
+    }
+  };
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [groupLibrary, setGroupLibrary] = useState<any[]>([]);
   const [groupRehearsals, setGroupRehearsals] = useState<any[]>([]);
@@ -428,10 +480,13 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    window.localStorage.removeItem(STORAGE_KEY);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
     setNotifications([]);
     setSessionUser(null);
     setView('inicio');
+    setMenuOpen(false);
   };
 
   const handleCreateGroup = async () => {
@@ -952,11 +1007,16 @@ export default function App() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <div className="avatar">{sessionUser.name[0]?.toUpperCase() || 'U'}</div>
-          <div>
+          <div className="avatar" title="Cerrar sesión" onClick={handleLogout} style={{ cursor: 'pointer' }}>
+            {sessionUser.name[0]?.toUpperCase() || 'U'}
+          </div>
+          <div className="sidebar-user-info">
             <b>{sessionUser.name}</b>
             <small>{sessionUser.role || sessionUser.email}</small>
           </div>
+          <button className="sidebar-logout-btn" title="Cerrar sesión" onClick={handleLogout}>
+            ⇥ Salir
+          </button>
         </div>
       </aside>
 
@@ -1129,7 +1189,14 @@ export default function App() {
 
             <button title="Asistente virtual" onClick={() => setAssistantOpen((open) => !open)}>✦</button>
             <button title="Cerrar sesión" onClick={handleLogout}>⇥</button>
-            <div className="avatar">{sessionUser.name[0]?.toUpperCase() || 'V'}</div>
+            <div
+              className="avatar"
+              title={`${sessionUser.name} • Tocar para cerrar sesión`}
+              onClick={handleLogout}
+              style={{ cursor: 'pointer' }}
+            >
+              {sessionUser.name[0]?.toUpperCase() || 'V'}
+            </div>
           </div>
         </header>
 
@@ -1409,7 +1476,14 @@ export default function App() {
                 <article className="panel">
                   <div className="panel-title">
                     <h2>Grupos</h2>
-                    <button onClick={() => setView('inicio')}>Actualizar →</button>
+                    <button
+                      className="btn-refresh-groups"
+                      onClick={handleRefreshGroups}
+                      disabled={isRefreshingGroups}
+                      title="Recargar lista de grupos desde la API"
+                    >
+                      {isRefreshingGroups ? '↻ Recargando...' : 'Actualizar →'}
+                    </button>
                   </div>
 
                   {canCreateGroups ? (
@@ -1499,18 +1573,24 @@ export default function App() {
                     <h2>Próximos ensayos</h2>
                     <button onClick={() => setView('ensayos')}>Ver calendario →</button>
                   </div>
-                  {records.map((r) => (
-                    <div className="agenda" key={r.id} onClick={() => setSelectedRecord(r)} style={{ cursor: 'pointer' }}>
-                      <b>
-                        {r.date.split(',')[1]?.trim() || r.date}
-                      </b>
-                      <span>
-                        <strong>{r.title}</strong>
-                        <br />
-                        {r.time} · {r.venue}
-                      </span>
-                    </div>
-                  ))}
+                  {records.map((r) => {
+                    const badge = parseRehearsalDateBadge(r.date);
+                    return (
+                      <div className="agenda-card" key={r.id} onClick={() => setSelectedRecord(r)}>
+                        <div className="rehearsal-date-badge">
+                          <span className="badge-day">{badge.day}</span>
+                          <span className="badge-sub">{badge.sub}</span>
+                        </div>
+                        <div className="rehearsal-details">
+                          <strong className="rehearsal-title">{r.title}</strong>
+                          <div className="rehearsal-time">
+                            <i className="clock-icon">⏱</i> {r.time || 'Horario por confirmar'}
+                          </div>
+                          {r.venue && <div className="rehearsal-venue">📍 {r.venue}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </article>
               </section>
 
@@ -1650,21 +1730,24 @@ export default function App() {
               <section className="two-col">
                 <article className="panel">
                   <h2>Agenda de Ensayos</h2>
-                  {records.map((r) => (
-                    <div
-                      className="agenda"
-                      key={r.id}
-                      onClick={() => setSelectedRecord(r)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <b>{r.date.split(' ')[1] || r.date}</b>
-                      <span>
-                        <strong>{r.title}</strong> ({r.type})
-                        <br />
-                        {r.time} · {r.venue}
-                      </span>
-                    </div>
-                  ))}
+                  {records.map((r) => {
+                    const badge = parseRehearsalDateBadge(r.date);
+                    return (
+                      <div className="agenda-card" key={r.id} onClick={() => setSelectedRecord(r)}>
+                        <div className="rehearsal-date-badge">
+                          <span className="badge-day">{badge.day}</span>
+                          <span className="badge-sub">{badge.sub}</span>
+                        </div>
+                        <div className="rehearsal-details">
+                          <strong className="rehearsal-title">{r.title} ({r.type})</strong>
+                          <div className="rehearsal-time">
+                            <i className="clock-icon">⏱</i> {r.time || 'Horario por confirmar'}
+                          </div>
+                          {r.venue && <div className="rehearsal-venue">📍 {r.venue}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </article>
 
                 <article className="panel">
