@@ -409,36 +409,36 @@ export const api = {
     return data || [];
   },
 
-  async getGroupLibrary(groupId: string, userId: string): Promise<GroupLibraryItem[]> {
-    const data = await fetchJSON<GroupLibraryItem[]>(`/groups/${groupId}/library/${userId}`);
+  async getGroupLibrary(groupId: string, _userId?: string): Promise<GroupLibraryItem[]> {
+    const data = await fetchJSON<GroupLibraryItem[]>(`/groups/${groupId}/library`);
     return data || [];
   },
 
-  async createGroupLibraryItem(groupId: string, payload: { userId: string; title: string; description?: string; type?: string; file_url?: string; uploaded_by?: string }): Promise<GroupLibraryItem | null> {
+  async createGroupLibraryItem(groupId: string, payload: { userId?: string; title: string; description?: string; type?: string; file_url?: string; uploaded_by?: string }): Promise<GroupLibraryItem | null> {
     return await fetchJSON<GroupLibraryItem>(`/groups/${groupId}/library`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  async getGroupRehearsals(groupId: string, userId: string): Promise<GroupRehearsalItem[]> {
-    const data = await fetchJSON<GroupRehearsalItem[]>(`/groups/${groupId}/rehearsals/${userId}`);
+  async getGroupRehearsals(groupId: string, _userId?: string): Promise<GroupRehearsalItem[]> {
+    const data = await fetchJSON<GroupRehearsalItem[]>(`/groups/${groupId}/rehearsals`);
     return data || [];
   },
 
-  async createGroupRehearsal(groupId: string, payload: { title: string; date?: string; time?: string; location?: string; agenda?: string; notes?: string; created_by: string }): Promise<GroupRehearsalItem | null> {
+  async createGroupRehearsal(groupId: string, payload: { title: string; date?: string; time?: string; location?: string; agenda?: string; notes?: string; created_by?: string }): Promise<GroupRehearsalItem | null> {
     return await fetchJSON<GroupRehearsalItem>(`/groups/${groupId}/rehearsals`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
   },
 
-  async getGroupCommunity(groupId: string, userId: string): Promise<GroupCommunityPost[]> {
-    const data = await fetchJSON<GroupCommunityPost[]>(`/groups/${groupId}/community/${userId}`);
+  async getGroupCommunity(groupId: string, _userId?: string): Promise<GroupCommunityPost[]> {
+    const data = await fetchJSON<GroupCommunityPost[]>(`/groups/${groupId}/community`);
     return data || [];
   },
 
-  async createGroupPost(groupId: string, payload: { title: string; content: string; authorId: string; visibility?: string }): Promise<GroupCommunityPost | null> {
+  async createGroupPost(groupId: string, payload: { title: string; content: string; authorId?: string; visibility?: string }): Promise<GroupCommunityPost | null> {
     return await fetchJSON<GroupCommunityPost>(`/groups/${groupId}/community`, {
       method: 'POST',
       body: JSON.stringify(payload),

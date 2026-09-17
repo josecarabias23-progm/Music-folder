@@ -252,15 +252,15 @@ export default function App() {
       .then((members) => setGroupMembers(members))
       .catch(() => setGroupMembers([]));
 
-    api.getGroupLibrary(selectedGroupId, sessionUser.id)
+    api.getGroupLibrary(selectedGroupId)
       .then((items) => setGroupLibrary(items))
       .catch(() => setGroupLibrary([]));
 
-    api.getGroupRehearsals(selectedGroupId, sessionUser.id)
+    api.getGroupRehearsals(selectedGroupId)
       .then((items) => setGroupRehearsals(items))
       .catch(() => setGroupRehearsals([]));
 
-    api.getGroupCommunity(selectedGroupId, sessionUser.id)
+    api.getGroupCommunity(selectedGroupId)
       .then((items) => setGroupPosts(items))
       .catch(() => setGroupPosts([]));
   }, [selectedGroupId, sessionUser?.id]);
