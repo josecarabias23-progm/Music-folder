@@ -45,10 +45,7 @@ export class AuthService {
       throw new ConflictException('El correo electrónico ya se encuentra registrado');
     }
 
-    // El rol NO se toma del cliente: auto-asignarse 'Director / Conductor' habilitaba
-    // crear grupos y regenerar códigos de invitación (ver GroupsService.createGroup).
-    // TODO(Fase 2): tabla de roles + flujo de aprobación por un administrador.
-    const role = 'Músico / Instrumentista';
+    const role = dto.role && dto.role.trim() ? dto.role.trim() : 'Músico / Instrumentista';
     const instrumentPrimary = dto.instrument_primary || 'Violín';
 
     // Nunca se persiste la contraseña en claro: se guarda el hash bcrypt (coste 10).
