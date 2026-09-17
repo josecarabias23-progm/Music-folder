@@ -1139,26 +1139,28 @@ export default function App() {
               <h1>{dynamicHeading}</h1>
               <p>{subheading}</p>
             </div>
-            {view === 'biblioteca' && (
-              <button className="primary" onClick={() => setShowUploadScoreModal(true)}>
-                + Subir partitura
-              </button>
-            )}
+            <div className="page-heading-actions">
               {view === 'biblioteca' && (
-                <button className="primary" style={{ marginLeft: 8 }} onClick={() => setShowPublicExplorer((s) => !s)}>
-                  Explorar Dominio Público
+                <>
+                  <button className="primary" onClick={() => setShowUploadScoreModal(true)}>
+                    + Subir partitura
+                  </button>
+                  <button className="btn-secondary" onClick={() => setShowPublicExplorer((s) => !s)}>
+                    Explorar Dominio Público
+                  </button>
+                </>
+              )}
+              {view === 'ensayos' && (
+                <button className="primary" onClick={() => setShowNewRecordModal(true)}>
+                  + Nuevo ensayo
                 </button>
               )}
-            {view === 'ensayos' && (
-              <button className="primary" onClick={() => setShowNewRecordModal(true)}>
-                + Nuevo ensayo
-              </button>
-            )}
-            {view === 'foro' && (
-              <button className="primary" onClick={() => setShowNewThreadModal(true)}>
-                + Crear publicación
-              </button>
-            )}
+              {view === 'foro' && (
+                <button className="primary" onClick={() => setShowNewThreadModal(true)}>
+                  + Crear publicación
+                </button>
+              )}
+            </div>
           </div>
 
           {selectedGroupId && (
@@ -1170,7 +1172,7 @@ export default function App() {
                 )}
               </div>
 
-              <div className="filters" style={{ margin: '12px 0' }}>
+              <div className="filters group-workspace-tabs" style={{ margin: '12px 0' }}>
                 {[
                   ['resumen', 'Resumen'],
                   ['biblioteca', 'Biblioteca'],

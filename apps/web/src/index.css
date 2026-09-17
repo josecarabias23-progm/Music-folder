@@ -1700,6 +1700,67 @@ button.btn-danger {
   color: var(--text-muted);
 }
 
+/* ==========================================================================
+   Responsive Refactoring & Accessible Touch Targets
+   ========================================================================== */
+
+button.primary,
+.btn-secondary,
+.modal-footer button,
+.form-actions button,
+.login-submit {
+  min-height: 44px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.page-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Horizontal scrollable tab container for mobile */
+.filters,
+.notif-filters,
+.group-workspace-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 16px;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.filters::-webkit-scrollbar,
+.notif-filters::-webkit-scrollbar,
+.group-workspace-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.filters button,
+.notif-filters button,
+.group-workspace-tabs button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
 @media (max-width: 1100px) {
   .score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .instrument-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1725,15 +1786,27 @@ button.btn-danger {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 38px;
+    height: 38px;
     border-radius: 10px;
     color: var(--primary);
     background: #f4f5ff;
   }
 
   header {
-    padding: 0 18px;
+    padding: 8px 14px;
+    gap: 8px;
+    min-height: auto;
+  }
+
+  .header-actions {
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .header-actions button:not(.notification-bell-btn):not(.stitch-status-pill) {
+    display: inline-flex !important;
   }
 
   .crumb {
@@ -1741,17 +1814,30 @@ button.btn-danger {
   }
 
   .content {
-    padding: 28px 16px 50px;
+    padding: 20px 14px 60px;
   }
 
   .page-heading {
     flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 22px;
+    align-items: stretch;
+    gap: 14px;
+    margin-bottom: 20px;
   }
 
   .page-heading h1 {
-    font-size: 32px;
+    font-size: 28px;
+  }
+
+  .page-heading-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .page-heading-actions button {
+    width: 100% !important;
+    min-height: 44px;
+    justify-content: center;
   }
 
   .metrics,
@@ -1769,25 +1855,94 @@ button.btn-danger {
   }
 
   .hero h2 {
-    font-size: 28px;
+    font-size: 26px;
   }
 
   .hero-note {
-    min-height: 120px;
-    font-size: 56px;
-  }
-
-  .header-actions button:not(.notification-bell-btn):not(.stitch-status-pill) {
-    display: none;
+    min-height: 100px;
+    font-size: 48px;
   }
 
   .notification-popover {
-    right: -18px;
+    right: -10px;
+    width: calc(100vw - 28px);
+    max-width: 360px;
   }
 
   .schedule {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  /* Modal responsive buttons & touch padding */
+  .modal-footer {
+    flex-direction: column-reverse;
+    width: 100%;
+    gap: 10px;
+    padding: 16px 20px;
+  }
+
+  .modal-footer button,
+  .form-actions button,
+  .login-submit {
+    width: 100% !important;
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 15px;
+    justify-content: center;
+  }
+
+  /* Floating Assistant Widget on Mobile */
+  .assistant-widget {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 40;
+  }
+
+  .assistant-toggle {
+    padding: 8px 14px;
+    min-height: 42px;
+    font-size: 13px;
+    border-radius: 999px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .assistant-panel {
+    position: fixed;
+    bottom: 68px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 120px);
+    z-index: 45;
+  }
+}
+
+@media (min-width: 801px) {
+  .filters,
+  .notif-filters,
+  .group-workspace-tabs {
+    overflow-x: visible;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-bottom: 0;
+  }
+
+  .modal-footer,
+  .form-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .modal-footer button,
+  .form-actions button {
+    width: auto !important;
+    min-height: 40px;
+    height: 40px;
   }
 }
 
@@ -1797,16 +1952,26 @@ button.btn-danger {
   }
 
   .login-copy h1 {
-    font-size: 32px;
-  }
-
-  .page-heading h1 {
     font-size: 28px;
   }
 
-  .assistant-widget {
-    right: 12px;
-    bottom: 12px;
+  .page-heading h1 {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 380px) {
+  header {
+    padding: 6px 10px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .role-badge {
+    display: none;
   }
 }
 
