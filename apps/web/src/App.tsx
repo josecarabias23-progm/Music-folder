@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, ForumThread, GroupItem, InstrumentItem, NotificationItem, RehearsalRecord, ScoreItem } from './api';
 import { initializeGoogleStitch, listGoogleStitchTools, StitchTool } from './stitch';
 import { usePWA } from './usePWA';
@@ -243,6 +243,10 @@ export default function App() {
   const [newThread, setNewThread] = useState({ title: '', author: '', category: 'Repertorio', content: '' });
   const [commentText, setCommentText] = useState('');
 
+  // Ref guards para evitar peticiones redundantes en bucle
+  const fetchedUserRef = useRef<string | null>(null);
+  const fetchedGroupIdRef = useRef<string | null>(null);
+
   // Initial Load
   useEffect(() => {
     let isMounted = true;
@@ -250,8 +254,15 @@ export default function App() {
     // Guard: Only fetch protected dashboard endpoints when user session is active
     if (!sessionUser?.id) {
       setNotifications([]);
+      fetchedUserRef.current = null;
       return;
     }
+
+    // Evitar llamadas duplicadas si los datos del usuario ya fueron solicitados
+    if (fetchedUserRef.current === sessionUser.id) {
+      return;
+    }
+    fetchedUserRef.current = sessionUser.id;
 
     // Paralelizar la carga inicial usando Promise.all para minimizar latencias y cascadas
     Promise.all([
@@ -270,8 +281,8 @@ export default function App() {
       if (threadsData) setThreads(threadsData);
       if (userGroupsData) {
         setGroups(userGroupsData);
-        if (userGroupsData.length > 0 && !selectedGroupId) {
-          setSelectedGroupId(userGroupsData[0].id);
+        if (userGroupsData.length > 0) {
+          setSelectedGroupId((prev) => prev || userGroupsData[0].id);
         }
       }
 
@@ -290,7 +301,16 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
-    if (!selectedGroupId || !sessionUser?.id) return;
+    if (!selectedGroupId || !sessionUser?.id) {
+      fetchedGroupIdRef.current = null;
+      return;
+    }
+
+    // Evitar volver a solicitar los datos del grupo si el ID seleccionado no cambió
+    if (fetchedGroupIdRef.current === selectedGroupId) {
+      return;
+    }
+    fetchedGroupIdRef.current = selectedGroupId;
 
     // Paralelizar la carga de detalles del grupo seleccionado
     Promise.all([
@@ -478,6 +498,8 @@ export default function App() {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(STORAGE_KEY);
     }
+    fetchedUserRef.current = null;
+    fetchedGroupIdRef.current = null;
     setNotifications([]);
     setSessionUser(null);
     setView('inicio');

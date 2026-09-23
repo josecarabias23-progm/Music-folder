@@ -136,7 +136,7 @@ interface CacheEntry<T> {
 
 const responseCache = new Map<string, CacheEntry<any>>();
 const inFlightRequests = new Map<string, Promise<any>>();
-const DEFAULT_TTL_MS = 15_000; // 15 segundos de caché para peticiones GET
+const DEFAULT_TTL_MS = 30_000; // 30 segundos de caché para peticiones GET
 
 export function clearApiCache(pattern?: string | RegExp) {
   if (!pattern) {
@@ -155,9 +155,14 @@ async function fetchJSON<T>(endpoint: string, options?: RequestInit, ttlMs: numb
   const isGet = method === 'GET';
   const cacheKey = `${method}:${endpoint}`;
 
-  // Para peticiones de mutación (POST, PUT, PATCH, DELETE), invalidar caché de forma preventiva
+  // Para peticiones de mutación (POST, PUT, PATCH, DELETE), invalidar únicamente la caché del dominio afectado
   if (!isGet) {
-    clearApiCache();
+    const domain = endpoint.split('/')[1];
+    if (domain) {
+      clearApiCache(domain);
+    } else {
+      clearApiCache();
+    }
   }
 
   // 1. Verificar si hay un resultado válido en caché (solo para GET)
