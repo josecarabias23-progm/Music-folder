@@ -178,7 +178,7 @@ async function fetchJSON<T>(endpoint: string, options?: RequestInit, ttlMs: numb
     return inFlightRequests.get(cacheKey) as Promise<T | null>;
   }
 
-  // 3. Ejecutar petición HTTP compartiendo el Promise entre llamados concurrentes
+  // 3. Ejecutar petición HTTP registrando y compartiendo la promesa de forma síncrona de inmediato
   const requestPromise = (async (): Promise<T | null> => {
     try {
       const headers: Record<string, string> = {

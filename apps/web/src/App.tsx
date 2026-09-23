@@ -245,9 +245,12 @@ export default function App() {
 
   // Ref guards para evitar peticiones redundantes en bucle
   const fetchedUserRef = useRef<string | null>(null);
-  const fetchedGroupIdRef = useRef<string | null>(null);
+  const fetchedMembersGroupRef = useRef<string | null>(null);
+  const fetchedCommunityGroupRef = useRef<string | null>(null);
+  const fetchedLibraryGroupRef = useRef<string | null>(null);
+  const fetchedRehearsalsGroupRef = useRef<string | null>(null);
 
-  // Initial Load
+  // Initial Load (Solo datos globales del usuario autenticado)
   useEffect(() => {
     let isMounted = true;
 
@@ -299,38 +302,73 @@ export default function App() {
     };
   }, [sessionUser?.id, sessionUser?.token]);
 
+  // Carga inicial básica del grupo seleccionado (Solo Miembros para métricas de resumen)
   useEffect(() => {
     let isMounted = true;
     if (!selectedGroupId || !sessionUser?.id) {
-      fetchedGroupIdRef.current = null;
+      fetchedMembersGroupRef.current = null;
       return;
     }
 
-    // Evitar volver a solicitar los datos del grupo si el ID seleccionado no cambió
-    if (fetchedGroupIdRef.current === selectedGroupId) {
+    if (fetchedMembersGroupRef.current === selectedGroupId) {
       return;
     }
-    fetchedGroupIdRef.current = selectedGroupId;
+    fetchedMembersGroupRef.current = selectedGroupId;
 
-    // Paralelizar la carga de detalles del grupo seleccionado
-    Promise.all([
-      api.getGroupMembers(selectedGroupId).catch(() => []),
-      api.getGroupLibrary(selectedGroupId).catch(() => []),
-      api.getGroupRehearsals(selectedGroupId).catch(() => []),
-      api.getGroupCommunity(selectedGroupId).catch(() => []),
-    ]).then(([members, library, rehearsals, community]) => {
-      if (!isMounted) return;
-
-      setGroupMembers(members || []);
-      setGroupLibrary(library || []);
-      setGroupRehearsals(rehearsals || []);
-      setGroupPosts(community || []);
-    });
+    api.getGroupMembers(selectedGroupId)
+      .then((members) => {
+        if (isMounted) setGroupMembers(members || []);
+      })
+      .catch(() => {
+        if (isMounted) setGroupMembers([]);
+      });
 
     return () => {
       isMounted = false;
     };
   }, [selectedGroupId, sessionUser?.id]);
+
+  // Carga bajo demanda por pestaña activa (Comunidad, Biblioteca, Ensayos)
+  useEffect(() => {
+    let isMounted = true;
+    if (!selectedGroupId || !sessionUser?.id) return;
+
+    if (groupWorkspaceTab === 'comunidad') {
+      if (fetchedCommunityGroupRef.current === selectedGroupId) return;
+      fetchedCommunityGroupRef.current = selectedGroupId;
+      api.getGroupCommunity(selectedGroupId)
+        .then((items) => {
+          if (isMounted) setGroupPosts(items || []);
+        })
+        .catch(() => {
+          if (isMounted) setGroupPosts([]);
+        });
+    } else if (groupWorkspaceTab === 'biblioteca') {
+      if (fetchedLibraryGroupRef.current === selectedGroupId) return;
+      fetchedLibraryGroupRef.current = selectedGroupId;
+      api.getGroupLibrary(selectedGroupId)
+        .then((items) => {
+          if (isMounted) setGroupLibrary(items || []);
+        })
+        .catch(() => {
+          if (isMounted) setGroupLibrary([]);
+        });
+    } else if (groupWorkspaceTab === 'ensayos') {
+      if (fetchedRehearsalsGroupRef.current === selectedGroupId) return;
+      fetchedRehearsalsGroupRef.current = selectedGroupId;
+      api.getGroupRehearsals(selectedGroupId)
+        .then((items) => {
+          if (isMounted) setGroupRehearsals(items || []);
+        })
+        .catch(() => {
+          if (isMounted) setGroupRehearsals([]);
+        });
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedGroupId, groupWorkspaceTab, sessionUser?.id]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -499,7 +537,10 @@ export default function App() {
       window.localStorage.removeItem(STORAGE_KEY);
     }
     fetchedUserRef.current = null;
-    fetchedGroupIdRef.current = null;
+    fetchedMembersGroupRef.current = null;
+    fetchedCommunityGroupRef.current = null;
+    fetchedLibraryGroupRef.current = null;
+    fetchedRehearsalsGroupRef.current = null;
     setNotifications([]);
     setSessionUser(null);
     setView('inicio');
