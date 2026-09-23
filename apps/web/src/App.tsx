@@ -252,6 +252,7 @@ export default function App() {
 
   // Initial Load (Solo datos globales del usuario autenticado)
   useEffect(() => {
+    const controller = new AbortController();
     let isMounted = true;
 
     // Guard: Only fetch protected dashboard endpoints when user session is active
@@ -267,16 +268,18 @@ export default function App() {
     }
     fetchedUserRef.current = sessionUser.id;
 
+    const reqOptions = { signal: controller.signal };
+
     // Paralelizar la carga inicial usando Promise.all para minimizar latencias y cascadas
     Promise.all([
-      api.getScores(),
-      api.getInstruments(),
-      api.getRecords(),
-      api.getThreads(),
-      api.getUserGroups(sessionUser.id),
-      api.getNotifications(sessionUser.id),
+      api.getScores(reqOptions),
+      api.getInstruments(reqOptions),
+      api.getRecords(reqOptions),
+      api.getThreads(reqOptions),
+      api.getUserGroups(sessionUser.id, reqOptions),
+      api.getNotifications(sessionUser.id, reqOptions),
     ]).then(([scoresData, instsData, recordsData, threadsData, userGroupsData, notifsData]) => {
-      if (!isMounted) return;
+      if (!isMounted || controller.signal.aborted) return;
 
       if (scoresData) setScores(scoresData);
       if (instsData) setInstruments(instsData);
@@ -295,16 +298,23 @@ export default function App() {
       } else if (notifsData && notifsData.length > 0) {
         setNotifications(notifsData);
       }
+    }).catch((err) => {
+      if (err?.name !== 'AbortError') {
+        console.warn('Initial dashboard fetch interrupted', err);
+      }
     });
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, [sessionUser?.id, sessionUser?.token]);
 
   // Carga inicial básica del grupo seleccionado (Solo Miembros para métricas de resumen)
   useEffect(() => {
+    const controller = new AbortController();
     let isMounted = true;
+
     if (!selectedGroupId || !sessionUser?.id) {
       fetchedMembersGroupRef.current = null;
       return;
@@ -315,58 +325,63 @@ export default function App() {
     }
     fetchedMembersGroupRef.current = selectedGroupId;
 
-    api.getGroupMembers(selectedGroupId)
+    api.getGroupMembers(selectedGroupId, { signal: controller.signal })
       .then((members) => {
-        if (isMounted) setGroupMembers(members || []);
+        if (isMounted && !controller.signal.aborted) setGroupMembers(members || []);
       })
-      .catch(() => {
-        if (isMounted) setGroupMembers([]);
+      .catch((err) => {
+        if (isMounted && err?.name !== 'AbortError') setGroupMembers([]);
       });
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, [selectedGroupId, sessionUser?.id]);
 
   // Carga bajo demanda por pestaña activa (Comunidad, Biblioteca, Ensayos)
   useEffect(() => {
+    const controller = new AbortController();
     let isMounted = true;
+
     if (!selectedGroupId || !sessionUser?.id) return;
+    const reqOptions = { signal: controller.signal };
 
     if (groupWorkspaceTab === 'comunidad') {
       if (fetchedCommunityGroupRef.current === selectedGroupId) return;
       fetchedCommunityGroupRef.current = selectedGroupId;
-      api.getGroupCommunity(selectedGroupId)
+      api.getGroupCommunity(selectedGroupId, undefined, reqOptions)
         .then((items) => {
-          if (isMounted) setGroupPosts(items || []);
+          if (isMounted && !controller.signal.aborted) setGroupPosts(items || []);
         })
-        .catch(() => {
-          if (isMounted) setGroupPosts([]);
+        .catch((err) => {
+          if (isMounted && err?.name !== 'AbortError') setGroupPosts([]);
         });
     } else if (groupWorkspaceTab === 'biblioteca') {
       if (fetchedLibraryGroupRef.current === selectedGroupId) return;
       fetchedLibraryGroupRef.current = selectedGroupId;
-      api.getGroupLibrary(selectedGroupId)
+      api.getGroupLibrary(selectedGroupId, undefined, reqOptions)
         .then((items) => {
-          if (isMounted) setGroupLibrary(items || []);
+          if (isMounted && !controller.signal.aborted) setGroupLibrary(items || []);
         })
-        .catch(() => {
-          if (isMounted) setGroupLibrary([]);
+        .catch((err) => {
+          if (isMounted && err?.name !== 'AbortError') setGroupLibrary([]);
         });
     } else if (groupWorkspaceTab === 'ensayos') {
       if (fetchedRehearsalsGroupRef.current === selectedGroupId) return;
       fetchedRehearsalsGroupRef.current = selectedGroupId;
-      api.getGroupRehearsals(selectedGroupId)
+      api.getGroupRehearsals(selectedGroupId, undefined, reqOptions)
         .then((items) => {
-          if (isMounted) setGroupRehearsals(items || []);
+          if (isMounted && !controller.signal.aborted) setGroupRehearsals(items || []);
         })
-        .catch(() => {
-          if (isMounted) setGroupRehearsals([]);
+        .catch((err) => {
+          if (isMounted && err?.name !== 'AbortError') setGroupRehearsals([]);
         });
     }
 
     return () => {
       isMounted = false;
+      controller.abort();
     };
   }, [selectedGroupId, groupWorkspaceTab, sessionUser?.id]);
 

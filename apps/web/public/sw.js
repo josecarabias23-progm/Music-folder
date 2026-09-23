@@ -37,12 +37,28 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event: Network-first for API requests, Stale-while-Revalidate for app static assets
+// Fetch event: Bypass API & Cross-Origin requests, Stale-while-Revalidate ONLY for static assets
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass service worker for non-GET requests or backend API requests
-  if (event.request.method !== 'GET' || url.pathname.startsWith('/api') || url.pathname.includes('/docs')) {
+  // Bypass Service Worker completamente para:
+  // 1. Métodos distintos de GET (POST, PUT, DELETE, PATCH, OPTIONS)
+  // 2. Peticiones de origen cruzado (ej. backend en Render o localhost:3001)
+  // 3. Rutas conocidas del API backend (/api, /sheets, /instruments, /records, /forums, /groups, /notifications, /public-scores, /auth, /health)
+  const isApiRoute =
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/sheets') ||
+    url.pathname.startsWith('/instruments') ||
+    url.pathname.startsWith('/records') ||
+    url.pathname.startsWith('/forums') ||
+    url.pathname.startsWith('/groups') ||
+    url.pathname.startsWith('/notifications') ||
+    url.pathname.startsWith('/public-scores') ||
+    url.pathname.startsWith('/auth') ||
+    url.pathname.startsWith('/health');
+
+  if (event.request.method !== 'GET' || isApiRoute) {
     return;
   }
 

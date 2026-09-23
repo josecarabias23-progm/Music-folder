@@ -322,8 +322,8 @@ const fallbackNotifications: NotificationItem[] = [
 ];
 
 export const api = {
-  async getScores(): Promise<ScoreItem[]> {
-    const data = await fetchJSON<ScoreItem[]>('/sheets');
+  async getScores(options?: RequestInit): Promise<ScoreItem[]> {
+    const data = await fetchJSON<ScoreItem[]>('/sheets', options);
     return data || fallbackScores;
   },
   async createScore(payload: Partial<ScoreItem>): Promise<ScoreItem> {
@@ -371,8 +371,8 @@ export const api = {
   getScoreDownloadUrl(id: string) {
     return `${API_BASE}/sheets/${id}/download`;
   },
-  async searchPublicScores(q: string) {
-    return await fetchJSON<any[]>(`/public-scores/search?q=${encodeURIComponent(q)}`);
+  async searchPublicScores(q: string, options?: RequestInit) {
+    return await fetchJSON<any[]>(`/public-scores/search?q=${encodeURIComponent(q)}`, options);
   },
 
   async importPublicScore(payload: { title: string; composer?: string; pdfUrl?: string; sourceUrl?: string; instrumentation?: string }) {
@@ -382,13 +382,13 @@ export const api = {
     });
   },
 
-  async getInstruments(): Promise<InstrumentItem[]> {
-    const data = await fetchJSON<InstrumentItem[]>('/instruments');
+  async getInstruments(options?: RequestInit): Promise<InstrumentItem[]> {
+    const data = await fetchJSON<InstrumentItem[]>('/instruments', options);
     return data || fallbackInstruments;
   },
 
-  async getRecords(): Promise<RehearsalRecord[]> {
-    const data = await fetchJSON<RehearsalRecord[]>('/records');
+  async getRecords(options?: RequestInit): Promise<RehearsalRecord[]> {
+    const data = await fetchJSON<RehearsalRecord[]>('/records', options);
     return data || fallbackRecords;
   },
   async createRecord(payload: Partial<RehearsalRecord>): Promise<RehearsalRecord> {
@@ -408,8 +408,8 @@ export const api = {
     };
   },
 
-  async getThreads(): Promise<ForumThread[]> {
-    const data = await fetchJSON<ForumThread[]>('/forums/threads');
+  async getThreads(options?: RequestInit): Promise<ForumThread[]> {
+    const data = await fetchJSON<ForumThread[]>('/forums/threads', options);
     return data || fallbackThreads;
   },
   async createThread(payload: Partial<ForumThread>): Promise<ForumThread> {
@@ -439,13 +439,13 @@ export const api = {
     });
   },
 
-  async getGroups(): Promise<GroupItem[]> {
-    const data = await fetchJSON<GroupItem[]>('/groups');
+  async getGroups(options?: RequestInit): Promise<GroupItem[]> {
+    const data = await fetchJSON<GroupItem[]>('/groups', options);
     return data || [];
   },
 
-  async getUserGroups(userId: string): Promise<GroupItem[]> {
-    const data = await fetchJSON<GroupItem[]>(`/groups/user/${userId}`);
+  async getUserGroups(userId: string, options?: RequestInit): Promise<GroupItem[]> {
+    const data = await fetchJSON<GroupItem[]>(`/groups/user/${userId}`, options);
     return data || [];
   },
 
@@ -471,13 +471,13 @@ export const api = {
     });
   },
 
-  async getGroupMembers(groupId: string): Promise<GroupMember[]> {
-    const data = await fetchJSON<GroupMember[]>(`/groups/${groupId}/members`);
+  async getGroupMembers(groupId: string, options?: RequestInit): Promise<GroupMember[]> {
+    const data = await fetchJSON<GroupMember[]>(`/groups/${groupId}/members`, options);
     return data || [];
   },
 
-  async getGroupLibrary(groupId: string, _userId?: string): Promise<GroupLibraryItem[]> {
-    const data = await fetchJSON<GroupLibraryItem[]>(`/groups/${groupId}/library`);
+  async getGroupLibrary(groupId: string, _userId?: string, options?: RequestInit): Promise<GroupLibraryItem[]> {
+    const data = await fetchJSON<GroupLibraryItem[]>(`/groups/${groupId}/library`, options);
     return data || [];
   },
 
@@ -488,8 +488,8 @@ export const api = {
     });
   },
 
-  async getGroupRehearsals(groupId: string, _userId?: string): Promise<GroupRehearsalItem[]> {
-    const data = await fetchJSON<GroupRehearsalItem[]>(`/groups/${groupId}/rehearsals`);
+  async getGroupRehearsals(groupId: string, _userId?: string, options?: RequestInit): Promise<GroupRehearsalItem[]> {
+    const data = await fetchJSON<GroupRehearsalItem[]>(`/groups/${groupId}/rehearsals`, options);
     return data || [];
   },
 
@@ -500,8 +500,8 @@ export const api = {
     });
   },
 
-  async getGroupCommunity(groupId: string, _userId?: string): Promise<GroupCommunityPost[]> {
-    const data = await fetchJSON<GroupCommunityPost[]>(`/groups/${groupId}/community`);
+  async getGroupCommunity(groupId: string, _userId?: string, options?: RequestInit): Promise<GroupCommunityPost[]> {
+    const data = await fetchJSON<GroupCommunityPost[]>(`/groups/${groupId}/community`, options);
     return data || [];
   },
 
@@ -512,9 +512,9 @@ export const api = {
     });
   },
 
-  async getNotifications(userId?: string): Promise<NotificationItem[]> {
+  async getNotifications(userId?: string, options?: RequestInit): Promise<NotificationItem[]> {
     const endpoint = userId ? `/notifications?userId=${encodeURIComponent(userId)}` : '/notifications';
-    const data = await fetchJSON<NotificationItem[]>(endpoint);
+    const data = await fetchJSON<NotificationItem[]>(endpoint, options);
     return data || fallbackNotifications;
   },
 
