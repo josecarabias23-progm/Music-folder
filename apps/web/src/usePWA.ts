@@ -40,45 +40,12 @@ export function usePWA() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Register Service Worker and monitor updates
+    // Registro de Service Worker desactivado para evitar interferencias y peticiones duplicadas
+    /*
     if ('serviceWorker' in navigator) {
-      // Listen for controllerchange so that when skipWaiting completes, page automatically reloads
-      let refreshing = false;
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          window.location.reload();
-        }
-      });
-
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          setSwRegistration(registration);
-          console.log('[PWA] ServiceWorker registered with scope:', registration.scope);
-
-          // Check if there is already a waiting worker (installed while app was running or closed)
-          if (registration.waiting) {
-            setHasUpdate(true);
-          }
-
-          // Monitor updatefound event
-          registration.onupdatefound = () => {
-            const installingWorker = registration.installing;
-            if (installingWorker) {
-              installingWorker.onstatechange = () => {
-                if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // A new update is ready!
-                  console.log('[PWA] New version ready for activation.');
-                  setHasUpdate(true);
-                }
-              };
-            }
-          };
-        })
-        .catch((err) => {
-          console.warn('[PWA] ServiceWorker registration failed:', err);
-        });
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
+    */
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
