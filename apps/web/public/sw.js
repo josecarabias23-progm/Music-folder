@@ -37,34 +37,38 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event: Bypass API & Cross-Origin requests, Stale-while-Revalidate ONLY for static assets
+// Fetch event: Bypass API & Cross-Origin requests, Cache-First ONLY for local app static assets
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass Service Worker completamente para:
-  // 1. Métodos distintos de GET (POST, PUT, DELETE, PATCH, OPTIONS)
-  // 2. Peticiones de origen cruzado (ej. backend en Render o localhost:3001)
-  // 3. Rutas conocidas del API backend (/api, /sheets, /instruments, /records, /forums, /groups, /notifications, /public-scores, /auth, /health)
-  const isApiRoute =
-    url.origin !== self.location.origin ||
-    url.pathname.startsWith('/api') ||
-    url.pathname.startsWith('/sheets') ||
-    url.pathname.startsWith('/instruments') ||
-    url.pathname.startsWith('/records') ||
-    url.pathname.startsWith('/forums') ||
-    url.pathname.startsWith('/groups') ||
-    url.pathname.startsWith('/notifications') ||
-    url.pathname.startsWith('/public-scores') ||
-    url.pathname.startsWith('/auth') ||
-    url.pathname.startsWith('/health');
-
-  if (event.request.method !== 'GET' || isApiRoute) {
+  // 1. Omitir inmediatamente peticiones que NO sean GET o que sean de origen cruzado (ej. backend en Render)
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
 
+  // 2. Omitir inmediatamente peticiones a rutas que NO correspondan a assets estáticos o navegación de la app
+  const isStaticAsset =
+    url.pathname === '/' ||
+    url.pathname === '/index.html' ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/favicon.svg' ||
+    url.pathname.startsWith('/assets/') ||
+    url.pathname.startsWith('/icons/');
+
+  const isNavigation = event.request.mode === 'navigate';
+
+  if (!isStaticAsset && !isNavigation) {
+    return; // El navegador maneja la petición de forma 100% nativa sin intervención del worker
+  }
+
+  // 3. Estrategia Cache-First limpia (Sin doble fetch ni peticiones duplicadas a la red)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
+      if (cachedResponse) {
+        return cachedResponse; // Retorna desde caché inmediatamente con 0 peticiones secundarias
+      }
+
+      return fetch(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
             const responseToCache = networkResponse.clone();
@@ -75,14 +79,11 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // If offline and request fails, return cached response or index.html for navigation
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html') || cachedResponse;
+          if (isNavigation) {
+            return caches.match('/index.html');
           }
-          return cachedResponse;
+          return null;
         });
-
-      return cachedResponse || fetchPromise;
     })
   );
 });
