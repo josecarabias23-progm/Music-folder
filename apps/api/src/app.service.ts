@@ -3,6 +3,11 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class AppService {
   getHealth() {
-    return { status: 'ok', service: 'music-folder-api' };
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      service: 'music-folder-api',
+    };
   }
 }

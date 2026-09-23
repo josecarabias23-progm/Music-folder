@@ -245,54 +245,71 @@ export default function App() {
 
   // Initial Load
   useEffect(() => {
+    let isMounted = true;
+
     // Guard: Only fetch protected dashboard endpoints when user session is active
     if (!sessionUser?.id) {
       setNotifications([]);
       return;
     }
 
-    api.getScores().then(setScores);
-    api.getInstruments().then(setInstruments);
-    api.getRecords().then(setRecords);
-    api.getThreads().then(setThreads);
-    api.getUserGroups(sessionUser.id).then((userGroups) => {
-      setGroups(userGroups);
-      if (userGroups.length > 0 && !selectedGroupId) {
-        setSelectedGroupId(userGroups[0].id);
+    // Paralelizar la carga inicial usando Promise.all para minimizar latencias y cascadas
+    Promise.all([
+      api.getScores(),
+      api.getInstruments(),
+      api.getRecords(),
+      api.getThreads(),
+      api.getUserGroups(sessionUser.id),
+      api.getNotifications(sessionUser.id),
+    ]).then(([scoresData, instsData, recordsData, threadsData, userGroupsData, notifsData]) => {
+      if (!isMounted) return;
+
+      if (scoresData) setScores(scoresData);
+      if (instsData) setInstruments(instsData);
+      if (recordsData) setRecords(recordsData);
+      if (threadsData) setThreads(threadsData);
+      if (userGroupsData) {
+        setGroups(userGroupsData);
+        if (userGroupsData.length > 0 && !selectedGroupId) {
+          setSelectedGroupId(userGroupsData[0].id);
+        }
+      }
+
+      const storedNotifications = getStoredNotifications(sessionUser.id);
+      if (storedNotifications.length > 0) {
+        setNotifications(storedNotifications);
+      } else if (notifsData && notifsData.length > 0) {
+        setNotifications(notifsData);
       }
     });
 
-    const storedNotifications = getStoredNotifications(sessionUser.id);
-    if (storedNotifications.length > 0) {
-      setNotifications(storedNotifications);
-      return;
-    }
-
-    api.getNotifications(sessionUser.id).then((data) => {
-      if (data && data.length > 0) {
-        setNotifications(data);
-      }
-    });
+    return () => {
+      isMounted = false;
+    };
   }, [sessionUser?.id, sessionUser?.token]);
 
   useEffect(() => {
+    let isMounted = true;
     if (!selectedGroupId || !sessionUser?.id) return;
 
-    api.getGroupMembers(selectedGroupId)
-      .then((members) => setGroupMembers(members))
-      .catch(() => setGroupMembers([]));
+    // Paralelizar la carga de detalles del grupo seleccionado
+    Promise.all([
+      api.getGroupMembers(selectedGroupId).catch(() => []),
+      api.getGroupLibrary(selectedGroupId).catch(() => []),
+      api.getGroupRehearsals(selectedGroupId).catch(() => []),
+      api.getGroupCommunity(selectedGroupId).catch(() => []),
+    ]).then(([members, library, rehearsals, community]) => {
+      if (!isMounted) return;
 
-    api.getGroupLibrary(selectedGroupId)
-      .then((items) => setGroupLibrary(items))
-      .catch(() => setGroupLibrary([]));
+      setGroupMembers(members || []);
+      setGroupLibrary(library || []);
+      setGroupRehearsals(rehearsals || []);
+      setGroupPosts(community || []);
+    });
 
-    api.getGroupRehearsals(selectedGroupId)
-      .then((items) => setGroupRehearsals(items))
-      .catch(() => setGroupRehearsals([]));
-
-    api.getGroupCommunity(selectedGroupId)
-      .then((items) => setGroupPosts(items))
-      .catch(() => setGroupPosts([]));
+    return () => {
+      isMounted = false;
+    };
   }, [selectedGroupId, sessionUser?.id]);
 
   useEffect(() => {

@@ -51,6 +51,21 @@ async function bootstrap() {
     next();
   });
 
+  // Health check ultra-rápido a nivel de middleware para cronjobs/uptime pingers
+  // Responde inmediatamente sin pasar por tuberías ni consultas a la base de datos.
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.method === 'GET' && (req.path === '/health' || req.path === '/api/health')) {
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        service: 'music-folder-api',
+      });
+    }
+    next();
+  });
+
   // Filtro global: normaliza TODOS los errores al formato
   // { statusCode, message, timestamp, path } y nunca expone stack traces.
   app.useGlobalFilters(new GlobalExceptionFilter());
@@ -65,9 +80,10 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigins,
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
     credentials: true,
-    maxAge: 86400,
+    maxAge: 86400, // 24 horas (86400s) para que el navegador mantenga en caché las respuestas OPTIONS preflight
   });
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(

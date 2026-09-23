@@ -128,27 +128,89 @@ function getAuthToken(): string | null {
   }
 }
 
-async function fetchJSON<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
-  try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options?.headers as Record<string, string> || {}),
-    };
+// Cache en memoria con TTL y deduplicación de llamadas simultáneas (in-flight request sharing)
+interface CacheEntry<T> {
+  timestamp: number;
+  data: T;
+}
 
-    const token = getAuthToken();
-    if (token && !headers['Authorization'] && !headers['authorization']) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+const responseCache = new Map<string, CacheEntry<any>>();
+const inFlightRequests = new Map<string, Promise<any>>();
+const DEFAULT_TTL_MS = 15_000; // 15 segundos de caché para peticiones GET
 
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers,
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (err) {
-    return null;
+export function clearApiCache(pattern?: string | RegExp) {
+  if (!pattern) {
+    responseCache.clear();
+    return;
   }
+  for (const key of responseCache.keys()) {
+    if (typeof pattern === 'string' ? key.includes(pattern) : pattern.test(key)) {
+      responseCache.delete(key);
+    }
+  }
+}
+
+async function fetchJSON<T>(endpoint: string, options?: RequestInit, ttlMs: number = DEFAULT_TTL_MS): Promise<T | null> {
+  const method = (options?.method || 'GET').toUpperCase();
+  const isGet = method === 'GET';
+  const cacheKey = `${method}:${endpoint}`;
+
+  // Para peticiones de mutación (POST, PUT, PATCH, DELETE), invalidar caché de forma preventiva
+  if (!isGet) {
+    clearApiCache();
+  }
+
+  // 1. Verificar si hay un resultado válido en caché (solo para GET)
+  if (isGet && ttlMs > 0) {
+    const cached = responseCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < ttlMs) {
+      return cached.data as T;
+    }
+  }
+
+  // 2. Verificar si hay una petición idéntica en vuelo (In-Flight Request Deduplication)
+  if (isGet && inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey) as Promise<T | null>;
+  }
+
+  // 3. Ejecutar petición HTTP compartiendo el Promise entre llamados concurrentes
+  const requestPromise = (async (): Promise<T | null> => {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options?.headers as Record<string, string> || {}),
+      };
+
+      const token = getAuthToken();
+      if (token && !headers['Authorization'] && !headers['authorization']) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+
+      if (!res.ok) return null;
+      const data = await res.json();
+
+      if (isGet && ttlMs > 0 && data !== null) {
+        responseCache.set(cacheKey, { timestamp: Date.now(), data });
+      }
+
+      return data as T;
+    } catch (err) {
+      return null;
+    } finally {
+      inFlightRequests.delete(cacheKey);
+    }
+  })();
+
+  if (isGet) {
+    inFlightRequests.set(cacheKey, requestPromise);
+  }
+
+  return requestPromise;
 }
 
 // Fallback initial states if API server is not running
