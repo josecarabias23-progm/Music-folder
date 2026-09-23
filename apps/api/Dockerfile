@@ -24,4 +24,4 @@ EXPOSE 3001
 
 ENV PORT=3001
 
-CMD ["npm", "--workspace", "apps/api", "run", "start"]
+CMD ["npm", "--workspace", "apps/api", "run", "start:prod"]

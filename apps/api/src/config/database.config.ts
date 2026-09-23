@@ -13,6 +13,7 @@ import { GroupLibraryItem } from '../groups/entities/group-library-item.entity';
 import { GroupRehearsal } from '../groups/entities/group-rehearsal.entity';
 import { GroupCommunityPost } from '../groups/group-community.entity';
 
+
 /**
  * Entidades del esquema.
  *
@@ -33,6 +34,8 @@ export const DATABASE_ENTITIES = [
   GroupRehearsal,
   GroupCommunityPost,
 ];
+
+
 
 export type DatabaseType = 'postgres' | 'sqlite';
 
@@ -64,15 +67,42 @@ function resolvePostgresSsl(): { rejectUnauthorized: boolean } | undefined {
 }
 
 /**
+ * Habilita la ejecución automática de migraciones al iniciar la aplicación.
+ * Puede ser deshabilitada explícitamente definiendo `DB_MIGRATIONS_RUN=false`.
+ */
+export function resolveMigrationsRun(): boolean {
+  const configured = process.env.DB_MIGRATIONS_RUN;
+
+  if (configured !== undefined && configured.trim() !== '') {
+    return parseBoolean(configured);
+  }
+
+  return true;
+}
+
+/**
  * Opciones de conexión compartidas por la aplicación (`AppModule`) y por el CLI
  * (`typeorm.datasource.ts`), para que ambos caminos no puedan desincronizarse.
  */
 export function buildDataSourceOptions(): DataSourceOptions {
+  const isTypeScriptRuntime = __filename.endsWith('.ts');
+  const migrationsGlob = path.join(
+    __dirname,
+    isTypeScriptRuntime ? '../migrations/*.ts' : '../migrations/*.js',
+  );
+
+  const sharedOptions = {
+    entities: DATABASE_ENTITIES,
+    migrations: [migrationsGlob],
+    migrationsTableName: 'migrations',
+    migrationsRun: resolveMigrationsRun(),
+  };
+
   if (resolveDatabaseType() === 'sqlite') {
     return {
       type: 'sqlite',
       database: resolveSqlitePath(),
-      entities: DATABASE_ENTITIES,
+      ...sharedOptions,
     };
   }
 
@@ -83,7 +113,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
     return {
       type: 'postgres',
       url: databaseUrl,
-      entities: DATABASE_ENTITIES,
+      ...sharedOptions,
       ...(ssl ? { ssl } : {}),
     };
   }
@@ -95,7 +125,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
     username: process.env.POSTGRES_USER || 'postgres',
     password: process.env.POSTGRES_PASSWORD || 'postgrespassword',
     database: process.env.POSTGRES_DB || 'music_folder',
-    entities: DATABASE_ENTITIES,
+    ...sharedOptions,
     ...(ssl ? { ssl } : {}),
   };
 }
@@ -104,7 +134,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
  * Valor efectivo de `synchronize`.
  *
  * Nunca se activa de forma implícita en producción: el esquema se gestiona con
- * migraciones y Render las aplica en `preDeployCommand`.
+ * migraciones y Render las aplica en `preDeployCommand` o al iniciar la app.
  */
 export function resolveSynchronize(): boolean {
   const configured = process.env.DB_SYNCHRONIZE;

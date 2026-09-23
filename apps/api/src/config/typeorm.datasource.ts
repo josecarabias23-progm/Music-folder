@@ -41,10 +41,10 @@ const migrationsGlob = path.join(
 // que el CLI la detecte como única.
 const AppDataSource = new DataSource({
   ...buildDataSourceOptions(),
-  // El CLI NUNCA debe sincronizar: sólo aplica migraciones versionadas.
+  // El CLI NUNCA debe sincronizar automáticamente ni ejecutar migraciones en la inicialización:
+  // sólo aplica migraciones cuando se ejecuta el comando `migration:run`.
   synchronize: false,
-  migrations: [migrationsGlob],
-  migrationsTableName: 'migrations',
+  migrationsRun: false,
 } as DataSourceOptions);
 
 export default AppDataSource;
