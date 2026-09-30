@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Sheet } from './entities/sheet.entity';
 import { SheetUploadedEvent } from '../notifications/events/sheet-uploaded.event';
 import { StorageService } from '../storage/storage.service';
+import { IUnitOfWork, UNIT_OF_WORK } from '../common/database';
 
 export interface ScoreItem {
   id: string;
@@ -21,6 +22,8 @@ export interface ScoreItem {
 @Injectable()
 export class SheetsService {
   constructor(
+    @Inject(UNIT_OF_WORK)
+    private readonly unitOfWork: IUnitOfWork,
     @InjectRepository(Sheet)
     private readonly sheetRepository: Repository<Sheet>,
     private readonly eventEmitter: EventEmitter2,
@@ -49,34 +52,40 @@ export class SheetsService {
   }
 
   async create(payload: Partial<ScoreItem>): Promise<ScoreItem> {
-    const sheet = this.sheetRepository.create({
-      title: payload.title || 'Nueva Obra',
-      composer: payload.composer || 'Anónimo',
-      instrument_role: payload.ensemble || 'Orquesta completa',
-      difficulty_level: payload.difficulty || 'intermediate',
-      file_format: payload.type || 'pdf',
-      file_url: 'https://example.com/scores/default.pdf',
-      file_size: 1000000,
-      key_signature: 'C Major',
-      time_signature: '4/4',
-      is_public: payload.isFavorite || false,
+    return this.unitOfWork.runInTransaction(async (uow) => {
+      const sheetRepo = uow.getRepository(Sheet);
+      const sheet = sheetRepo.create({
+        title: payload.title || 'Nueva Obra',
+        composer: payload.composer || 'Anónimo',
+        instrument_role: payload.ensemble || 'Orquesta completa',
+        difficulty_level: payload.difficulty || 'intermediate',
+        file_format: payload.type || 'pdf',
+        file_url: 'https://example.com/scores/default.pdf',
+        file_size: 1000000,
+        key_signature: 'C Major',
+        time_signature: '4/4',
+        is_public: payload.isFavorite || false,
+      });
+
+      const saved = await sheetRepo.save(sheet);
+      const score = this.mapSheetToScoreItem(saved);
+
+      // Programar la emisión del evento de notificación post-commit
+      uow.registerPostCommitTask(() => {
+        this.eventEmitter.emit(
+          'sheet.uploaded',
+          new SheetUploadedEvent(
+            score.id,
+            score.title,
+            score.composer,
+            score.ensemble,
+            score.owner,
+          ),
+        );
+      });
+
+      return score;
     });
-    const saved = await this.sheetRepository.save(sheet);
-    const score = this.mapSheetToScoreItem(saved);
-
-    // Emit Event for Notifications
-    this.eventEmitter.emit(
-      'sheet.uploaded',
-      new SheetUploadedEvent(
-        score.id,
-        score.title,
-        score.composer,
-        score.ensemble,
-        score.owner,
-      ),
-    );
-
-    return score;
   }
 
   async findOne(id: string): Promise<ScoreItem> {
@@ -86,42 +95,49 @@ export class SheetsService {
   }
 
   async update(id: string, payload: Partial<ScoreItem>): Promise<ScoreItem> {
-    const sheet = await this.sheetRepository.findOne({ where: { id } });
-    if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
+    return this.unitOfWork.runInTransaction(async (uow) => {
+      const sheetRepo = uow.getRepository(Sheet);
+      const sheet = await sheetRepo.findById(id);
+      if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
 
-    if (payload.title) sheet.title = payload.title;
-    if (payload.composer) sheet.composer = payload.composer;
-    if (payload.ensemble) sheet.instrument_role = payload.ensemble;
-    if (payload.type) sheet.file_format = payload.type;
+      if (payload.title) sheet.title = payload.title;
+      if (payload.composer) sheet.composer = payload.composer;
+      if (payload.ensemble) sheet.instrument_role = payload.ensemble;
+      if (payload.type) sheet.file_format = payload.type;
 
-    const saved = await this.sheetRepository.save(sheet);
-    return this.mapSheetToScoreItem(saved);
+      const saved = await sheetRepo.save(sheet);
+      return this.mapSheetToScoreItem(saved);
+    });
   }
 
   async attachFile(id: string, filePath: string, size: number, format: string): Promise<ScoreItem> {
-    const sheet = await this.sheetRepository.findOne({ where: { id } });
-    if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
+    return this.unitOfWork.runInTransaction(async (uow) => {
+      const sheetRepo = uow.getRepository(Sheet);
+      const sheet = await sheetRepo.findById(id);
+      if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
 
-    sheet.file_url = filePath;
-    sheet.file_size = size;
-    sheet.file_format = format;
+      sheet.file_url = filePath;
+      sheet.file_size = size;
+      sheet.file_format = format;
 
-    const saved = await this.sheetRepository.save(sheet);
+      const saved = await sheetRepo.save(sheet);
+      const score = this.mapSheetToScoreItem(saved);
 
-    // Emit event for notifications
-    const score = this.mapSheetToScoreItem(saved);
-    this.eventEmitter.emit(
-      'sheet.uploaded',
-      new SheetUploadedEvent(
-        score.id,
-        score.title,
-        score.composer,
-        score.ensemble,
-        score.owner,
-      ),
-    );
+      uow.registerPostCommitTask(() => {
+        this.eventEmitter.emit(
+          'sheet.uploaded',
+          new SheetUploadedEvent(
+            score.id,
+            score.title,
+            score.composer,
+            score.ensemble,
+            score.owner,
+          ),
+        );
+      });
 
-    return score;
+      return score;
+    });
   }
 
   /**
@@ -135,17 +151,22 @@ export class SheetsService {
   }
 
   async remove(id: string): Promise<{ success: boolean }> {
-    const sheet = await this.sheetRepository.findOne({ where: { id } });
-    if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
+    return this.unitOfWork.runInTransaction(async (uow) => {
+      const sheetRepo = uow.getRepository(Sheet);
+      const sheet = await sheetRepo.findById(id);
+      if (!sheet) throw new NotFoundException(`Sheet ${id} not found`);
 
-    await this.sheetRepository.delete(id);
+      await sheetRepo.delete(id);
 
-    // Limpieza del archivo asociado. `deleteFile` ignora las referencias externas
-    // (URLs) y nunca lanza: un fallo aquí no debe revertir el borrado del registro.
-    if (sheet.file_url) {
-      await this.storageService.deleteFile(sheet.file_url);
-    }
+      // Tarea Post-Commit: Eliminar archivo físico solo si el borrado en DB se confirma con éxito
+      if (sheet.file_url) {
+        const fileUrl = sheet.file_url;
+        uow.registerPostCommitTask(async () => {
+          await this.storageService.deleteFile(fileUrl);
+        });
+      }
 
-    return { success: true };
+      return { success: true };
+    });
   }
 }
