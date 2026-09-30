@@ -2,6 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Instrument } from './entities/instrument.entity';
+import { CacheService } from '../common/cache';
+
+export const CACHE_KEY_ALL_INSTRUMENTS = 'musicfolder:v1:instruments:all';
+export const CACHE_TTL_INSTRUMENTS = 86400; // 24h
 
 export interface InstrumentItem {
   id: string;
@@ -76,6 +80,7 @@ export class InstrumentsService {
   constructor(
     @InjectRepository(Instrument)
     private readonly instrumentRepository: Repository<Instrument>,
+    private readonly cacheService: CacheService,
   ) {}
 
   private mapEntityToItem(item: Instrument): InstrumentItem {
@@ -95,8 +100,16 @@ export class InstrumentsService {
   }
 
   async findAll(): Promise<InstrumentItem[]> {
+    const cached = await this.cacheService.get<InstrumentItem[]>(CACHE_KEY_ALL_INSTRUMENTS);
+    if (cached) {
+      return cached;
+    }
+
     const instruments = await this.instrumentRepository.find();
-    return instruments.map((inst) => this.mapEntityToItem(inst));
+    const result = instruments.map((inst) => this.mapEntityToItem(inst));
+
+    await this.cacheService.set(CACHE_KEY_ALL_INSTRUMENTS, result, CACHE_TTL_INSTRUMENTS);
+    return result;
   }
 
   async findOne(id: string): Promise<InstrumentItem> {

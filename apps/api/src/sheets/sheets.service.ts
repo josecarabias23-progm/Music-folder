@@ -6,6 +6,11 @@ import { Sheet } from './entities/sheet.entity';
 import { SheetUploadedEvent } from '../notifications/events/sheet-uploaded.event';
 import { StorageService } from '../storage/storage.service';
 import { IUnitOfWork, UNIT_OF_WORK } from '../common/database';
+import { CacheService } from '../common/cache';
+
+export const CACHE_KEY_SHEETS_ALL = 'musicfolder:v1:sheets:all';
+export const CACHE_NAMESPACE_SHEETS = 'musicfolder:v1:sheets:*';
+export const CACHE_TTL_SHEETS = 600; // 10 minutos (600s)
 
 export interface ScoreItem {
   id: string;
@@ -28,6 +33,7 @@ export class SheetsService {
     private readonly sheetRepository: Repository<Sheet>,
     private readonly eventEmitter: EventEmitter2,
     private readonly storageService: StorageService,
+    private readonly cacheService: CacheService,
   ) {}
 
   private mapSheetToScoreItem(sheet: Sheet): ScoreItem {
@@ -45,10 +51,18 @@ export class SheetsService {
   }
 
   async findAll(): Promise<ScoreItem[]> {
+    const cached = await this.cacheService.get<ScoreItem[]>(CACHE_KEY_SHEETS_ALL);
+    if (cached) {
+      return cached;
+    }
+
     const sheets = await this.sheetRepository.find({
       order: { created_at: 'DESC' },
     });
-    return sheets.map((s) => this.mapSheetToScoreItem(s));
+    const result = sheets.map((s) => this.mapSheetToScoreItem(s));
+
+    await this.cacheService.set(CACHE_KEY_SHEETS_ALL, result, CACHE_TTL_SHEETS);
+    return result;
   }
 
   async create(payload: Partial<ScoreItem>): Promise<ScoreItem> {
@@ -70,8 +84,8 @@ export class SheetsService {
       const saved = await sheetRepo.save(sheet);
       const score = this.mapSheetToScoreItem(saved);
 
-      // Programar la emisión del evento de notificación post-commit
-      uow.registerPostCommitTask(() => {
+      // Programar la emisión del evento de notificación e invalidación de caché Post-Commit
+      uow.registerPostCommitTask(async () => {
         this.eventEmitter.emit(
           'sheet.uploaded',
           new SheetUploadedEvent(
@@ -82,6 +96,7 @@ export class SheetsService {
             score.owner,
           ),
         );
+        await this.cacheService.delByPattern(CACHE_NAMESPACE_SHEETS);
       });
 
       return score;
@@ -106,6 +121,11 @@ export class SheetsService {
       if (payload.type) sheet.file_format = payload.type;
 
       const saved = await sheetRepo.save(sheet);
+
+      uow.registerPostCommitTask(async () => {
+        await this.cacheService.delByPattern(CACHE_NAMESPACE_SHEETS);
+      });
+
       return this.mapSheetToScoreItem(saved);
     });
   }
@@ -123,7 +143,7 @@ export class SheetsService {
       const saved = await sheetRepo.save(sheet);
       const score = this.mapSheetToScoreItem(saved);
 
-      uow.registerPostCommitTask(() => {
+      uow.registerPostCommitTask(async () => {
         this.eventEmitter.emit(
           'sheet.uploaded',
           new SheetUploadedEvent(
@@ -134,6 +154,7 @@ export class SheetsService {
             score.owner,
           ),
         );
+        await this.cacheService.delByPattern(CACHE_NAMESPACE_SHEETS);
       });
 
       return score;
@@ -158,13 +179,14 @@ export class SheetsService {
 
       await sheetRepo.delete(id);
 
-      // Tarea Post-Commit: Eliminar archivo físico solo si el borrado en DB se confirma con éxito
-      if (sheet.file_url) {
-        const fileUrl = sheet.file_url;
-        uow.registerPostCommitTask(async () => {
+      // Tarea Post-Commit: Eliminar archivo físico y purgar caché en Redis tras COMMIT exitoso
+      const fileUrl = sheet.file_url;
+      uow.registerPostCommitTask(async () => {
+        if (fileUrl) {
           await this.storageService.deleteFile(fileUrl);
-        });
-      }
+        }
+        await this.cacheService.delByPattern(CACHE_NAMESPACE_SHEETS);
+      });
 
       return { success: true };
     });
