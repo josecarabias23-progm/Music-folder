@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
@@ -6,10 +6,13 @@ import { isDirectorRole } from '../auth/roles.util';
 import { Notification } from '../notifications/entities/notification.entity';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
+import { IUnitOfWork, UNIT_OF_WORK } from '../common/database';
 
 @Injectable()
 export class GroupsService {
   constructor(
+    @Inject(UNIT_OF_WORK)
+    private readonly unitOfWork: IUnitOfWork,
     @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
     @InjectRepository(GroupMember)
@@ -40,44 +43,50 @@ export class GroupsService {
       throw new BadRequestException('Group name is required');
     }
 
-    const owner = await this.userRepository.findOne({ where: { id: payload.ownerId } });
-    if (!owner) {
-      throw new NotFoundException(`User ${payload.ownerId} not found`);
-    }
+    return this.unitOfWork.runInTransaction(async (uow) => {
+      const userRepo = uow.getRepository(User);
+      const groupRepo = uow.getRepository(Group);
+      const memberRepo = uow.getRepository(GroupMember);
 
-    if (!isDirectorRole(owner.role)) {
-      throw new ForbiddenException('Only director-role users can create groups');
-    }
+      const owner = await userRepo.findById(payload.ownerId);
+      if (!owner) {
+        throw new NotFoundException(`User ${payload.ownerId} not found`);
+      }
 
-    let joinCode = this.generateJoinCode();
-    let existing = await this.groupRepository.findOne({ where: { join_code: joinCode } });
+      if (!isDirectorRole(owner.role)) {
+        throw new ForbiddenException('Only director-role users can create groups');
+      }
 
-    while (existing) {
-      joinCode = this.generateJoinCode();
-      existing = await this.groupRepository.findOne({ where: { join_code: joinCode } });
-    }
+      let joinCode = this.generateJoinCode();
+      let existing = await groupRepo.findOne({ where: { join_code: joinCode } as any });
 
-    const group = this.groupRepository.create({
-      name: payload.name.trim(),
-      description: payload.description || null,
-      type: payload.type || 'ensemble',
-      visibility: payload.visibility || 'private',
-      owner,
-      join_code: joinCode,
-      is_join_code_active: true,
+      while (existing) {
+        joinCode = this.generateJoinCode();
+        existing = await groupRepo.findOne({ where: { join_code: joinCode } as any });
+      }
+
+      const group = groupRepo.create({
+        name: payload.name.trim(),
+        description: payload.description || null,
+        type: payload.type || 'ensemble',
+        visibility: payload.visibility || 'private',
+        owner,
+        join_code: joinCode,
+        is_join_code_active: true,
+      });
+
+      const createdGroup = await groupRepo.save(group);
+
+      const ownerMembership = memberRepo.create({
+        group: createdGroup,
+        user: owner,
+        role: 'director',
+        status: 'active',
+      });
+
+      await memberRepo.save(ownerMembership);
+      return createdGroup;
     });
-
-    const createdGroup = await this.groupRepository.save(group);
-
-    const ownerMembership = this.groupMemberRepository.create({
-      group: createdGroup,
-      user: owner,
-      role: 'director',
-      status: 'active',
-    });
-
-    await this.groupMemberRepository.save(ownerMembership);
-    return createdGroup;
   }
 
   async findAll(userId?: string): Promise<Group[]> {
