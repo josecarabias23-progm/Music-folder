@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -21,7 +21,9 @@ export interface RehearsalRecord {
 }
 
 @Injectable()
-export class RecordsService {
+export class RecordsService implements OnModuleInit {
+  private readonly logger = new Logger(RecordsService.name);
+
   constructor(
     @InjectRepository(RehearsalLog)
     private readonly logRepository: Repository<RehearsalLog>,
@@ -32,6 +34,17 @@ export class RecordsService {
     private readonly groupsService: GroupsService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  async onModuleInit() {
+    try {
+      await this.logRepository.query(`
+        ALTER TABLE rehearsal_logs ADD COLUMN IF NOT EXISTS group_id VARCHAR NULL;
+      `);
+      this.logger.log('Database schema check: group_id column on rehearsal_logs verified.');
+    } catch (err: any) {
+      this.logger.warn(`Could not ensure group_id column on rehearsal_logs: ${err?.message}`);
+    }
+  }
 
   private mapEntityToRecord(log: RehearsalLog): RehearsalRecord {
     return {
@@ -52,23 +65,28 @@ export class RecordsService {
       return [];
     }
 
-    const memberships = await this.groupMemberRepository.find({
-      where: { user: { id: userId }, status: 'active' },
-      relations: ['group'],
-    });
+    try {
+      const memberships = await this.groupMemberRepository.find({
+        where: { user: { id: userId }, status: 'active' },
+        relations: ['group'],
+      });
 
-    const activeGroupIds = memberships.map((m) => m.group?.id).filter((id): id is string => Boolean(id));
+      const activeGroupIds = memberships.map((m) => m.group?.id).filter((id): id is string => Boolean(id));
 
-    if (activeGroupIds.length === 0) {
+      if (activeGroupIds.length === 0) {
+        return [];
+      }
+
+      const logs = await this.logRepository.find({
+        where: { group_id: In(activeGroupIds) },
+        order: { created_at: 'DESC' },
+      });
+
+      return logs.map((l) => this.mapEntityToRecord(l));
+    } catch (error: any) {
+      this.logger.error(`Error executing RecordsService.findAll for userId "${userId}": ${error?.message}`, error?.stack);
       return [];
     }
-
-    const logs = await this.logRepository.find({
-      where: { group_id: In(activeGroupIds) },
-      order: { created_at: 'DESC' },
-    });
-
-    return logs.map((l) => this.mapEntityToRecord(l));
   }
 
   async create(payload: Partial<RehearsalRecord> & { groupId?: string }, creatorUserId?: string): Promise<RehearsalRecord> {
