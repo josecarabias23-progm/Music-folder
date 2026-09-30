@@ -316,12 +316,12 @@ export default function App() {
   const isDirector = isDirectorRole(sessionUser?.role);
 
   const handleMarkAsRead = async (id: string) => {
-    await api.markNotificationAsRead(id);
+    await markNotificationAsReadMutation.mutateAsync(id);
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const handleMarkAllAsRead = async () => {
-    await api.markAllNotificationsAsRead(sessionUser?.id);
+    await markAllNotificationsAsReadMutation.mutateAsync(sessionUser?.id);
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
@@ -473,43 +473,51 @@ export default function App() {
       return;
     }
 
-    const created = await api.createGroup({
-      name: groupForm.name.trim(),
-      description: groupForm.description.trim(),
-      type: groupForm.type,
-      visibility: groupForm.visibility,
-      ownerId: sessionUser.id,
-    });
+    try {
+      const created = await createGroupMutation.mutateAsync({
+        name: groupForm.name.trim(),
+        description: groupForm.description.trim(),
+        type: groupForm.type,
+        visibility: groupForm.visibility,
+        ownerId: sessionUser.id,
+      });
 
-    if (created) {
-      setGroups((prev) => [created, ...prev]);
-      setGroupStatus(`Grupo creado correctamente. Código: ${created.join_code || 'N/A'}`);
-      setGroupForm({ name: '', description: '', type: 'ensemble', visibility: 'private' });
-    } else {
-      setGroupStatus('No se pudo crear el grupo.');
+      if (created) {
+        setGroups((prev) => [created, ...prev]);
+        setGroupStatus(`Grupo creado correctamente. Código: ${created.join_code || 'N/A'}`);
+        setGroupForm({ name: '', description: '', type: 'ensemble', visibility: 'private' });
+      } else {
+        setGroupStatus('No se pudo crear el grupo.');
+      }
+    } catch (err: any) {
+      setGroupStatus(err.message || 'No se pudo crear el grupo.');
     }
   };
 
   const handleJoinGroup = async () => {
     if (!sessionUser?.id || !joinGroupCode.trim()) return;
 
-    const result = await api.joinGroup({ userId: sessionUser.id, code: joinGroupCode.trim() });
+    try {
+      const result = await joinGroupMutation.mutateAsync({ userId: sessionUser.id, code: joinGroupCode.trim() });
 
-    if (result && result.group) {
-      setGroupStatus(`Te uniste al grupo "${result.group.name}".`);
-      setJoinGroupCode('');
-      const refreshed = await api.getUserGroups(sessionUser.id);
-      setGroups(refreshed);
-      if (refreshed.length > 0) setSelectedGroupId(refreshed[0].id);
-    } else {
-      setGroupStatus('El código es inválido o no está activo.');
+      if (result && result.group) {
+        setGroupStatus(`Te uniste al grupo "${result.group.name}".`);
+        setJoinGroupCode('');
+        const refreshed = await api.getUserGroups(sessionUser.id);
+        setGroups(refreshed);
+        if (refreshed.length > 0) setSelectedGroupId(refreshed[0].id);
+      } else {
+        setGroupStatus('El código es inválido o no está activo.');
+      }
+    } catch (err: any) {
+      setGroupStatus(err.message || 'El código es inválido o no está activo.');
     }
   };
 
   const handleRegenerateGroupCode = async () => {
     if (!sessionUser?.id || !selectedGroupId) return;
 
-    const updated = await api.regenerateGroupCode(selectedGroupId, sessionUser.id);
+    const updated = await regenerateGroupCodeMutation.mutateAsync({ groupId: selectedGroupId, userId: sessionUser.id });
     if (updated) {
       setGroups((prev) => prev.map((group) => (group.id === selectedGroupId ? { ...group, join_code: updated.join_code } : group)));
       setGroupStatus(`Se renovó el código del grupo. Nuevo código: ${updated.join_code}`);
@@ -519,12 +527,15 @@ export default function App() {
   const handleCreateGroupLibraryItem = async () => {
     if (!sessionUser?.id || !selectedGroupId || !newGroupLibraryItem.title.trim()) return;
 
-    const created = await api.createGroupLibraryItem(selectedGroupId, {
-      userId: sessionUser.id,
-      title: newGroupLibraryItem.title.trim(),
-      description: newGroupLibraryItem.description.trim(),
-      type: newGroupLibraryItem.type,
-      uploaded_by: sessionUser.id,
+    const created = await createGroupLibraryItemMutation.mutateAsync({
+      groupId: selectedGroupId,
+      item: {
+        userId: sessionUser.id,
+        title: newGroupLibraryItem.title.trim(),
+        description: newGroupLibraryItem.description.trim(),
+        type: newGroupLibraryItem.type,
+        uploaded_by: sessionUser.id,
+      },
     });
 
     if (created) {
@@ -536,13 +547,16 @@ export default function App() {
   const handleCreateGroupRehearsal = async () => {
     if (!sessionUser?.id || !selectedGroupId || !newGroupRehearsal.title.trim()) return;
 
-    const created = await api.createGroupRehearsal(selectedGroupId, {
-      title: newGroupRehearsal.title.trim(),
-      date: newGroupRehearsal.date,
-      time: newGroupRehearsal.time,
-      location: newGroupRehearsal.location,
-      agenda: newGroupRehearsal.agenda,
-      created_by: sessionUser.id,
+    const created = await createGroupRehearsalMutation.mutateAsync({
+      groupId: selectedGroupId,
+      rehearsal: {
+        title: newGroupRehearsal.title.trim(),
+        date: newGroupRehearsal.date,
+        time: newGroupRehearsal.time,
+        location: newGroupRehearsal.location,
+        agenda: newGroupRehearsal.agenda,
+        created_by: sessionUser.id,
+      },
     });
 
     if (created) {
@@ -554,11 +568,14 @@ export default function App() {
   const handleCreateGroupPost = async () => {
     if (!sessionUser?.id || !selectedGroupId || !newGroupPost.title.trim() || !newGroupPost.content.trim()) return;
 
-    const created = await api.createGroupPost(selectedGroupId, {
-      title: newGroupPost.title.trim(),
-      content: newGroupPost.content.trim(),
-      authorId: sessionUser.id,
-      visibility: newGroupPost.visibility,
+    const created = await createGroupPostMutation.mutateAsync({
+      groupId: selectedGroupId,
+      post: {
+        title: newGroupPost.title.trim(),
+        content: newGroupPost.content.trim(),
+        authorId: sessionUser.id,
+        visibility: newGroupPost.visibility,
+      },
     });
 
     if (created) {
@@ -596,12 +613,10 @@ export default function App() {
   const handleAddScore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newScore.title) return;
-    const added = await api.createScore(newScore as any);
-    // If a PDF file was selected, upload it
-    if (newScoreFile && added?.id) {
-      await api.uploadScoreFile(added.id, newScoreFile);
+    const added = await createScoreMutation.mutateAsync({ score: newScore as any, file: newScoreFile });
+    if (added) {
+      setScores([added, ...scores]);
     }
-    setScores([added, ...scores]);
 
     const notif: NotificationItem = {
       id: 'notif-' + Date.now(),
@@ -610,7 +625,7 @@ export default function App() {
       message: `Partituras actualizadas. ${newScore.ensemble}`,
       timestamp: 'Hace un momento',
       read: false,
-      targetId: added.id,
+      targetId: added?.id,
       metadata: {
         ensemble: newScore.ensemble,
         author: sessionUser?.name || 'Sofía Rossi',
@@ -629,7 +644,7 @@ export default function App() {
   };
 
   const handleDeleteScore = async (id: string) => {
-    await api.deleteScore(id);
+    await deleteScoreMutation.mutateAsync(id);
     setScores(scores.filter((s) => s.id !== id));
     setSelectedScore(null);
   };
@@ -637,8 +652,10 @@ export default function App() {
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRecord.title) return;
-    const added = await api.createRecord(newRecord);
-    setRecords([added, ...records]);
+    const added = await createRecordMutation.mutateAsync(newRecord);
+    if (added) {
+      setRecords([added, ...records]);
+    }
 
     const notif: NotificationItem = {
       id: 'notif-' + Date.now(),
@@ -647,7 +664,7 @@ export default function App() {
       message: `${newRecord.date || 'Mañana a las 10:00 AM'} - ${newRecord.venue}`,
       timestamp: 'Hace un momento',
       read: false,
-      targetId: added.id,
+      targetId: added?.id,
       metadata: {
         date: `${newRecord.date || 'Próxima fecha'} · ${newRecord.time}`,
         venue: newRecord.venue,
@@ -668,10 +685,7 @@ export default function App() {
   const handleAddThread = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newThread.title) return;
-    const added = await api.createThread(newThread as any);
-    if (newThread.content) {
-      await api.addComment(added.id, newThread.author, newThread.content);
-    }
+    await createThreadMutation.mutateAsync(newThread as any);
     const updatedThreads = await api.getThreads();
     setThreads(updatedThreads);
     setNewThread({ title: '', author: sessionUser?.name || 'Músico', category: 'Repertorio', content: '' });
@@ -682,7 +696,7 @@ export default function App() {
     e.preventDefault();
     if (!selectedThread || !commentText.trim()) return;
     const authorName = sessionUser?.name || 'Músico';
-    const updated = await api.addComment(selectedThread.id, authorName, commentText);
+    const updated = await addCommentMutation.mutateAsync({ threadId: selectedThread.id, author: authorName, content: commentText });
     if (updated) {
       setSelectedThread(updated);
       setThreads(threads.map((t) => (t.id === updated.id ? updated : t)));
@@ -691,7 +705,7 @@ export default function App() {
   };
 
   const handleLikeThread = async (id: string) => {
-    const updated = await api.likeThread(id);
+    const updated = await likeThreadMutation.mutateAsync(id);
     if (updated) {
       if (selectedThread?.id === id) setSelectedThread(updated);
       setThreads(threads.map((t) => (t.id === id ? updated : t)));
@@ -1179,7 +1193,7 @@ export default function App() {
                   </button>
                 </>
               )}
-              {view === 'ensayos' && (
+              {view === 'ensayos' && (isDirector || isGroupDirector) && (
                 <button className="primary" onClick={() => setShowNewRecordModal(true)}>
                   + Nuevo ensayo
                 </button>
@@ -1301,29 +1315,31 @@ export default function App() {
 
               {groupWorkspaceTab === 'ensayos' && (
                 <>
-                  <div className="form-row" style={{ marginBottom: 12 }}>
-                    <input
-                      value={newGroupRehearsal.title}
-                      onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, title: e.target.value })}
-                      placeholder="Título del ensayo"
-                    />
-                    <input
-                      value={newGroupRehearsal.date}
-                      onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, date: e.target.value })}
-                      placeholder="Fecha"
-                    />
-                    <input
-                      value={newGroupRehearsal.time}
-                      onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, time: e.target.value })}
-                      placeholder="Hora"
-                    />
-                    <input
-                      value={newGroupRehearsal.location}
-                      onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, location: e.target.value })}
-                      placeholder="Lugar"
-                    />
-                    <button className="primary" onClick={handleCreateGroupRehearsal}>Programar</button>
-                  </div>
+                  {(isDirector || isGroupDirector) && (
+                    <div className="form-row" style={{ marginBottom: 12 }}>
+                      <input
+                        value={newGroupRehearsal.title}
+                        onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, title: e.target.value })}
+                        placeholder="Título del ensayo"
+                      />
+                      <input
+                        value={newGroupRehearsal.date}
+                        onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, date: e.target.value })}
+                        placeholder="Fecha"
+                      />
+                      <input
+                        value={newGroupRehearsal.time}
+                        onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, time: e.target.value })}
+                        placeholder="Hora"
+                      />
+                      <input
+                        value={newGroupRehearsal.location}
+                        onChange={(e) => setNewGroupRehearsal({ ...newGroupRehearsal, location: e.target.value })}
+                        placeholder="Lugar"
+                      />
+                      <button className="primary" onClick={handleCreateGroupRehearsal}>Programar</button>
+                    </div>
+                  )}
                   <div className="stack-list">
                     {groupRehearsals.length === 0 ? <p>No hay ensayos programados.</p> : groupRehearsals.map((rehearsal) => (
                       <div key={rehearsal.id} className="mini-card">

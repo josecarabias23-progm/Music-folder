@@ -7,6 +7,7 @@ import { Notification } from '../notifications/entities/notification.entity';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
 import { IUnitOfWork, UNIT_OF_WORK } from '../common/database';
+import { CacheService } from '../common/cache';
 
 @Injectable()
 export class GroupsService {
@@ -21,6 +22,7 @@ export class GroupsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
+    private readonly cacheService: CacheService,
   ) {}
 
   private generateJoinCode(): string {
@@ -85,6 +87,12 @@ export class GroupsService {
       });
 
       await memberRepo.save(ownerMembership);
+
+      if (this.cacheService) {
+        await this.cacheService.delByPattern('group:*');
+        await this.cacheService.delByPattern('user:*');
+      }
+
       return createdGroup;
     });
   }
@@ -166,12 +174,23 @@ export class GroupsService {
   }
 
   async assertDirectorAccess(userId: string, groupId: string): Promise<GroupMember> {
-    const membership = await this.assertGroupAccess(userId, groupId);
-    if (membership.role !== 'director') {
+    const group = await this.groupRepository.findOne({ where: { id: groupId }, relations: ['owner'] });
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const membership = await this.getMembershipForGroup(userId, groupId);
+
+    const isOwner = group?.owner?.id === userId;
+    const isUserAdmin = user?.role === 'admin';
+    const isDirectorMember = membership?.role === 'director' || membership?.role === 'admin';
+
+    if (!membership && !isOwner && !isUserAdmin) {
+      throw new ForbiddenException(`User ${userId} is not a member of group ${groupId}`);
+    }
+
+    if (!isOwner && !isUserAdmin && !isDirectorMember) {
       throw new ForbiddenException(`User ${userId} must be the director of group ${groupId}`);
     }
 
-    return membership;
+    return membership || ({ user, group, role: isUserAdmin ? 'admin' : 'director', status: 'active' } as GroupMember);
   }
 
   async regenerateJoinCode(groupId: string, actorUserId: string): Promise<Group> {
@@ -196,13 +215,18 @@ export class GroupsService {
   }
 
   async joinGroupByCode(userId: string, code: string): Promise<GroupMember> {
+    const cleanCode = code ? code.trim().toUpperCase() : '';
+    if (!cleanCode) {
+      throw new BadRequestException('Group join code is required');
+    }
+
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
 
     const group = await this.groupRepository.findOne({
-      where: { join_code: code, is_join_code_active: true },
+      where: { join_code: cleanCode, is_join_code_active: true },
       relations: ['owner'],
     });
 
@@ -248,6 +272,11 @@ export class GroupsService {
           },
         }),
       );
+    }
+
+    if (this.cacheService) {
+      await this.cacheService.delByPattern('group:*');
+      await this.cacheService.delByPattern('user:*');
     }
 
     return savedMember;

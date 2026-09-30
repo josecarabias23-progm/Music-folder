@@ -56,6 +56,7 @@ export function useCreateGroup() {
       api.createGroup(payload),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.userGroups(variables.ownerId) });
+      queryClient.invalidateQueries({ queryKey: ['userGroups'] });
     },
   });
 }
@@ -64,8 +65,15 @@ export function useJoinGroup() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ userId, code }: { userId: string; code: string }) => api.joinGroup({ userId, code }),
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.userGroups(variables.userId) });
+      queryClient.invalidateQueries({ queryKey: ['userGroups'] });
+      if (data?.group?.id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.groupMembers(data.group.id) });
+      }
+      queryClient.invalidateQueries({ queryKey: ['groupMembers'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications(variables.userId) });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }
