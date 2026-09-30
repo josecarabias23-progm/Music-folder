@@ -19,6 +19,7 @@ import { StorageModule } from './storage/storage.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { GroupsModule } from './groups/groups.module';
 import { DatabaseCommonModule } from './common/database/database-common.module';
+import { CacheModule } from './common/cache/cache.module';
 import { buildDataSourceOptions, resolveSynchronize } from './config/database.config';
 
 import { User } from './auth/entities/user.entity';
@@ -50,6 +51,7 @@ if (synchronize && isProduction) {
   imports: [
     EventEmitterModule.forRoot(),
     DatabaseCommonModule,
+    CacheModule,
     TypeOrmModule.forRoot({
       ...buildDataSourceOptions(),
       // El esquema se gestiona con migraciones (ver preDeployCommand en render.yaml).
