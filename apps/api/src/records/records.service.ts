@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { RehearsalLog } from './entities/rehearsal-log.entity';
-import { RehearsalScheduledEvent } from '../notifications/events/rehearsal-scheduled.event';
+import { GroupMember } from '../groups/entities/group-member.entity';
+import { Notification } from '../notifications/entities/notification.entity';
+import { GroupsService } from '../groups/groups.service';
 import { AttendanceMarkedEvent } from '../notifications/events/attendance-marked.event';
 
 export interface RehearsalRecord {
@@ -15,6 +17,7 @@ export interface RehearsalRecord {
   venue: string;
   attendeesCount?: number;
   notes?: string;
+  groupId?: string;
 }
 
 @Injectable()
@@ -22,6 +25,11 @@ export class RecordsService {
   constructor(
     @InjectRepository(RehearsalLog)
     private readonly logRepository: Repository<RehearsalLog>,
+    @InjectRepository(GroupMember)
+    private readonly groupMemberRepository: Repository<GroupMember>,
+    @InjectRepository(Notification)
+    private readonly notificationRepository: Repository<Notification>,
+    private readonly groupsService: GroupsService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -35,17 +43,54 @@ export class RecordsService {
       venue: log.venue || '',
       attendeesCount: log.attendees_count ?? 0,
       notes: log.notes || '',
+      groupId: log.group_id || undefined,
     };
   }
 
-  async findAll(): Promise<RehearsalRecord[]> {
+  async findAll(userId?: string): Promise<RehearsalRecord[]> {
+    if (!userId) {
+      return [];
+    }
+
+    const memberships = await this.groupMemberRepository.find({
+      where: { user: { id: userId }, status: 'active' },
+      relations: ['group'],
+    });
+
+    const activeGroupIds = memberships.map((m) => m.group?.id).filter((id): id is string => Boolean(id));
+
+    if (activeGroupIds.length === 0) {
+      return [];
+    }
+
     const logs = await this.logRepository.find({
+      where: { group_id: In(activeGroupIds) },
       order: { created_at: 'DESC' },
     });
+
     return logs.map((l) => this.mapEntityToRecord(l));
   }
 
-  async create(payload: Partial<RehearsalRecord>): Promise<RehearsalRecord> {
+  async create(payload: Partial<RehearsalRecord> & { groupId?: string }, creatorUserId?: string): Promise<RehearsalRecord> {
+    if (!creatorUserId) {
+      throw new BadRequestException('Creator user id is required to create a record');
+    }
+
+    let targetGroupId = payload.groupId;
+    if (!targetGroupId) {
+      const activeMemberships = await this.groupMemberRepository.find({
+        where: { user: { id: creatorUserId }, status: 'active' },
+        relations: ['group'],
+      });
+      if (activeMemberships.length > 0 && activeMemberships[0].group?.id) {
+        targetGroupId = activeMemberships[0].group.id;
+      } else {
+        throw new BadRequestException('El ensayo debe estar vinculado a un grupo válido');
+      }
+    }
+
+    await this.groupsService.assertDirectorAccess(creatorUserId, targetGroupId);
+
     const log = this.logRepository.create({
       title: payload.title || 'Nuevo ensayo',
       type: payload.type || 'General',
@@ -54,22 +99,34 @@ export class RecordsService {
       venue: payload.venue || 'Sala Principal',
       attendees_count: payload.attendeesCount || 0,
       notes: payload.notes || '',
+      group_id: targetGroupId,
     });
     const saved = await this.logRepository.save(log);
     const record = this.mapEntityToRecord(saved);
 
-    // Emit Event for Notifications
-    this.eventEmitter.emit(
-      'rehearsal.scheduled',
-      new RehearsalScheduledEvent(
-        record.id,
-        record.title,
-        record.date,
-        record.time,
-        record.venue,
-        'Dirección Musical',
-      ),
-    );
+    const activeMembers = await this.groupMemberRepository.find({
+      where: { group: { id: targetGroupId }, status: 'active' },
+      relations: ['user'],
+    });
+
+    for (const member of activeMembers) {
+      if (member.user?.id) {
+        await this.notificationRepository.save(
+          this.notificationRepository.create({
+            userId: member.user.id,
+            type: 'rehearsal_scheduled',
+            title: `🗓️ Ensayo: ${record.title}`,
+            message: `${record.date || 'Próxima fecha'} · ${record.venue || 'Sala Principal'}`,
+            targetId: record.id,
+            metadata: {
+              date: `${record.date} · ${record.time}`,
+              venue: record.venue,
+              groupId: targetGroupId,
+            },
+          }),
+        );
+      }
+    }
 
     return record;
   }

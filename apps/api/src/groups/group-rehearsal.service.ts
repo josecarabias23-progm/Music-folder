@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Group } from './entities/group.entity';
 import { GroupRehearsal } from './entities/group-rehearsal.entity';
+import { GroupMember } from './entities/group-member.entity';
+import { Notification } from '../notifications/entities/notification.entity';
 import { GroupsService } from './groups.service';
 
 @Injectable()
@@ -15,6 +17,10 @@ export class GroupRehearsalService {
     private readonly rehearsalRepository: Repository<GroupRehearsal>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(GroupMember)
+    private readonly groupMemberRepository: Repository<GroupMember>,
+    @InjectRepository(Notification)
+    private readonly notificationRepository: Repository<Notification>,
     private readonly groupsService: GroupsService,
   ) {}
 
@@ -43,7 +49,34 @@ export class GroupRehearsalService {
       created_by: creator,
     });
 
-    return this.rehearsalRepository.save(rehearsal);
+    const savedRehearsal = await this.rehearsalRepository.save(rehearsal);
+
+    const activeMembers = await this.groupMemberRepository.find({
+      where: { group: { id: groupId }, status: 'active' },
+      relations: ['user'],
+    });
+
+    for (const member of activeMembers) {
+      if (member.user?.id) {
+        await this.notificationRepository.save(
+          this.notificationRepository.create({
+            userId: member.user.id,
+            type: 'rehearsal_scheduled',
+            title: `🗓️ Ensayo en ${group.name}`,
+            message: `${savedRehearsal.title}: ${savedRehearsal.date || 'Próxima fecha'} · ${savedRehearsal.location || 'Sala Principal'}`,
+            targetId: savedRehearsal.id,
+            metadata: {
+              groupId,
+              groupName: group.name,
+              date: `${savedRehearsal.date} · ${savedRehearsal.time}`,
+              location: savedRehearsal.location,
+            },
+          }),
+        );
+      }
+    }
+
+    return savedRehearsal;
   }
 
   async listRehearsals(groupId: string, actingUserId: string): Promise<GroupRehearsal[]> {

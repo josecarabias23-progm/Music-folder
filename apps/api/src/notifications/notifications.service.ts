@@ -11,13 +11,14 @@ export class NotificationsService {
   ) {}
 
   /**
-   * Notificaciones del destinatario más los avisos globales (`user_id` nulo).
+   * Notificaciones estrictamente privadas del destinatario.
    * `userId` es obligatorio para que no exista una consulta sin filtrar.
    */
   async findAll(userId: string): Promise<Notification[]> {
+    if (!userId) return [];
     return await this.notificationRepository
       .createQueryBuilder('n')
-      .where('n.userId = :userId OR n.userId IS NULL', { userId })
+      .where('n.userId = :userId', { userId })
       .orderBy('n.createdAt', 'DESC')
       .getMany();
   }
@@ -31,10 +32,7 @@ export class NotificationsService {
     const notification = await this.notificationRepository.findOne({ where: { id } });
     if (!notification) throw new NotFoundException(`Notification ${id} not found`);
 
-    // Las notificaciones sin destinatario son avisos globales (ensayos,
-    // partituras) y las ve todo el mundo; el resto sólo su dueño.
-    const isBroadcast = notification.userId === null || notification.userId === undefined;
-    if (!isBroadcast && notification.userId !== userId) {
+    if (notification.userId !== userId) {
       throw new ForbiddenException('No podés modificar notificaciones de otro usuario.');
     }
 
@@ -44,12 +42,7 @@ export class NotificationsService {
   }
 
   /**
-   * Marca como leídas las notificaciones del usuario autenticado (más los avisos
-   * globales). `userId` es obligatorio: sin filtro, la sentencia UPDATE alcanzaba
-   * a las notificaciones de todos los usuarios.
-   *
-   * Nota: `where(...)` opera sobre nombres de COLUMNA (no de propiedad), de ahí
-   * `user_id` en lugar de `userId`.
+   * Marca como leídas las notificaciones privadas del usuario autenticado.
    */
   async markAllAsRead(userId: string): Promise<{ success: boolean; count: number }> {
     const result = await this.notificationRepository
@@ -57,7 +50,7 @@ export class NotificationsService {
       .update(Notification)
       .set({ read: true })
       .where('read = :read', { read: false })
-      .andWhere('(user_id = :userId OR user_id IS NULL)', { userId })
+      .andWhere('user_id = :userId', { userId })
       .execute();
 
     return { success: true, count: result.affected || 0 };
@@ -67,8 +60,6 @@ export class NotificationsService {
     const notification = await this.notificationRepository.findOne({ where: { id } });
     if (!notification) throw new NotFoundException(`Notification ${id} not found`);
 
-    // Eliminar afecta a todos los usuarios en el caso de los avisos globales,
-    // por eso sólo puede hacerlo el destinatario de la notificación.
     if (notification.userId !== userId) {
       throw new ForbiddenException('No podés eliminar notificaciones de otro usuario.');
     }

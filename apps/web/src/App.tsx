@@ -652,7 +652,11 @@ export default function App() {
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRecord.title) return;
-    const added = await createRecordMutation.mutateAsync(newRecord);
+    const targetGroupId = selectedGroupId || (groups.length > 0 ? groups[0].id : undefined);
+    const added = await createRecordMutation.mutateAsync({
+      ...newRecord,
+      groupId: targetGroupId,
+    });
     if (added) {
       setRecords([added, ...records]);
     }

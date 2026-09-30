@@ -2,6 +2,8 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { RecordsService } from './records.service';
 import { Roles } from '../auth/roles.decorator';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { AuthenticatedUser } from '../auth/jwt.strategy';
 
 @Controller('records')
 @ApiTags('Records')
@@ -9,17 +11,20 @@ export class RecordsController {
   constructor(private readonly recordsService: RecordsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Listar registros de ensayo' })
-  findAll() {
-    return this.recordsService.findAll();
+  @ApiOperation({ summary: 'Listar registros de ensayo de las agrupaciones del usuario' })
+  findAll(@CurrentUser() user: AuthenticatedUser) {
+    return this.recordsService.findAll(user.id);
   }
 
   @Post()
   @Roles('admin', 'director')
   @ApiOperation({ summary: 'Crear un registro de ensayo (sólo dirección/administración)' })
-  @ApiBody({ schema: { example: { title: 'Ensayo general', artist: 'Orquesta Municipal', date: '2026-07-28' } } })
-  create(@Body() body: { title: string; artist: string; date: string }) {
-    return this.recordsService.create(body);
+  @ApiBody({ schema: { example: { title: 'Ensayo general', artist: 'Orquesta Municipal', date: '2026-07-28', groupId: 'group-uuid' } } })
+  create(
+    @Body() body: { title: string; type?: string; date?: string; time?: string; venue?: string; notes?: string; groupId?: string },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.recordsService.create(body, user.id);
   }
 
   @Get(':id')

@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { v4 as uuid } from 'uuid';
+import { Group } from '../../groups/entities/group.entity';
 
 @Entity('rehearsal_logs')
 export class RehearsalLog {
@@ -26,6 +27,13 @@ export class RehearsalLog {
 
   @Column('text', { nullable: true })
   notes: string | null;
+
+  @Column('varchar', { name: 'group_id', nullable: true })
+  group_id: string | null;
+
+  @ManyToOne(() => Group, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'group_id' })
+  group?: Group | null;
 
   @CreateDateColumn()
   created_at: Date;
