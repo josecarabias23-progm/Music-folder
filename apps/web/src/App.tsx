@@ -1,5 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, ForumThread, GroupItem, InstrumentItem, NotificationItem, RehearsalRecord, ScoreItem } from './api';
+import { useInstruments } from './queries/useInstruments';
+import { useCreateScore, useDeleteScore, useImportPublicScore, useScores } from './queries/useScores';
+import { useCreateRecord, useRecords } from './queries/useRecords';
+import { useAddComment, useCreateThread, useLikeThread, useThreads } from './queries/useThreads';
+import {
+  useCreateGroup,
+  useCreateGroupLibraryItem,
+  useCreateGroupPost,
+  useCreateGroupRehearsal,
+  useGroupCommunity,
+  useGroupLibrary,
+  useGroupMembers,
+  useGroupRehearsals,
+  useJoinGroup,
+  useRegenerateGroupCode,
+  useUserGroups,
+} from './queries/useUserGroups';
+import { useMarkAllNotificationsAsRead, useMarkNotificationAsRead, useNotifications } from './queries/useNotifications';
 import { initializeGoogleStitch, listGoogleStitchTools, StitchTool } from './stitch';
 import { usePWA } from './usePWA';
 
@@ -163,38 +181,72 @@ export default function App() {
     },
   ]);
 
-  // Data states
-  const [scores, setScores] = useState<ScoreItem[]>([]);
-  const [instruments, setInstruments] = useState<InstrumentItem[]>([]);
-  const [records, setRecords] = useState<RehearsalRecord[]>([]);
-  const [threads, setThreads] = useState<ForumThread[]>([]);
-  const [groups, setGroups] = useState<GroupItem[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  // TanStack Query Hooks
+  const isAuthenticated = Boolean(sessionUser?.id);
+  const { data: scoresData = [] } = useScores(isAuthenticated);
+  const { data: instrumentsData = [] } = useInstruments();
+  const { data: recordsData = [] } = useRecords(isAuthenticated);
+  const { data: threadsData = [] } = useThreads(isAuthenticated);
+  const { data: userGroupsData = [] } = useUserGroups(sessionUser?.id);
+  const { data: notificationsData = [] } = useNotifications(sessionUser?.id);
+
+  const [selectedGroupIdState, setSelectedGroupIdState] = useState<string | null>(null);
+  const selectedGroupId = selectedGroupIdState || (userGroupsData.length > 0 ? userGroupsData[0].id : null);
+  const setSelectedGroupId = (id: string | null | ((prev: string | null) => string | null)) => {
+    if (typeof id === 'function') {
+      setSelectedGroupIdState(id);
+    } else {
+      setSelectedGroupIdState(id);
+    }
+  };
+
+  const [groupWorkspaceTab, setGroupWorkspaceTab] = useState<'resumen' | 'biblioteca' | 'ensayos' | 'comunidad'>('resumen');
+
+  const { data: groupMembersData = [] } = useGroupMembers(selectedGroupId, sessionUser?.id);
+  const { data: groupLibraryData = [] } = useGroupLibrary(selectedGroupId, groupWorkspaceTab, sessionUser?.id);
+  const { data: groupRehearsalsData = [] } = useGroupRehearsals(selectedGroupId, groupWorkspaceTab, sessionUser?.id);
+  const { data: groupPostsData = [] } = useGroupCommunity(selectedGroupId, groupWorkspaceTab, sessionUser?.id);
+
+  // TanStack Query Mutations
+  const createScoreMutation = useCreateScore();
+  const deleteScoreMutation = useDeleteScore();
+  const importPublicScoreMutation = useImportPublicScore();
+  const createRecordMutation = useCreateRecord();
+  const createThreadMutation = useCreateThread();
+  const addCommentMutation = useAddComment();
+  const likeThreadMutation = useLikeThread();
+  const createGroupMutation = useCreateGroup();
+  const joinGroupMutation = useJoinGroup();
+  const regenerateGroupCodeMutation = useRegenerateGroupCode();
+  const createGroupLibraryItemMutation = useCreateGroupLibraryItem();
+  const createGroupRehearsalMutation = useCreateGroupRehearsal();
+  const createGroupPostMutation = useCreateGroupPost();
+  const markNotificationAsReadMutation = useMarkNotificationAsRead();
+  const markAllNotificationsAsReadMutation = useMarkAllNotificationsAsRead();
+
+  const scores = scoresData;
+  const instruments = instrumentsData;
+  const records = recordsData;
+  const threads = threadsData;
+  const groups = userGroupsData;
+  const groupMembers = groupMembersData;
+  const groupLibrary = groupLibraryData;
+  const groupRehearsals = groupRehearsalsData;
+  const groupPosts = groupPostsData;
+
+  const [notificationsState, setNotificationsState] = useState<NotificationItem[]>([]);
+  const notifications = notificationsData.length > 0 ? notificationsData : notificationsState;
+  const setNotifications = (update: NotificationItem[] | ((prev: NotificationItem[]) => NotificationItem[])) => {
+    setNotificationsState(update);
+  };
+
   const [isRefreshingGroups, setIsRefreshingGroups] = useState(false);
 
   const handleRefreshGroups = async () => {
     setIsRefreshingGroups(true);
-    try {
-      if (sessionUser?.id) {
-        const userGroups = await api.getUserGroups(sessionUser.id);
-        setGroups(userGroups || []);
-        if (userGroups && userGroups.length > 0 && !selectedGroupId) {
-          setSelectedGroupId(userGroups[0].id);
-        }
-      } else {
-        const allGroups = await api.getGroups();
-        setGroups(allGroups || []);
-      }
-    } catch (err) {
-      console.error('Error refreshing groups:', err);
-    } finally {
-      setTimeout(() => setIsRefreshingGroups(false), 400);
-    }
+    setTimeout(() => setIsRefreshingGroups(false), 400);
   };
-  const [groupMembers, setGroupMembers] = useState<any[]>([]);
-  const [groupLibrary, setGroupLibrary] = useState<any[]>([]);
-  const [groupRehearsals, setGroupRehearsals] = useState<any[]>([]);
-  const [groupPosts, setGroupPosts] = useState<any[]>([]);
+
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) || null;
   const isGroupDirector = Boolean(
     selectedGroup &&
@@ -207,10 +259,8 @@ export default function App() {
   const [newGroupLibraryItem, setNewGroupLibraryItem] = useState({ title: '', description: '', type: 'score' });
   const [newGroupRehearsal, setNewGroupRehearsal] = useState({ title: '', date: '', time: '', location: '', agenda: '' });
   const [newGroupPost, setNewGroupPost] = useState({ title: '', content: '', visibility: 'group' });
-  const [groupWorkspaceTab, setGroupWorkspaceTab] = useState<'resumen' | 'biblioteca' | 'ensayos' | 'comunidad'>('resumen');
 
   // Notifications state
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<'todas' | 'ensayos' | 'partituras' | 'asistencia'>('todas');
   const [toastMessage, setToastMessage] = useState<{ title: string; body: string; icon: string } | null>(null);
@@ -242,149 +292,6 @@ export default function App() {
   const [newRecord, setNewRecord] = useState({ title: '', type: 'General', date: '', time: '19:00–21:00', venue: 'Auditorio Manuel de Falla', notes: '' });
   const [newThread, setNewThread] = useState({ title: '', author: '', category: 'Repertorio', content: '' });
   const [commentText, setCommentText] = useState('');
-
-  // Ref guards para evitar peticiones redundantes en bucle
-  const fetchedUserRef = useRef<string | null>(null);
-  const fetchedMembersGroupRef = useRef<string | null>(null);
-  const fetchedCommunityGroupRef = useRef<string | null>(null);
-  const fetchedLibraryGroupRef = useRef<string | null>(null);
-  const fetchedRehearsalsGroupRef = useRef<string | null>(null);
-
-  // Initial Load (Solo datos globales del usuario autenticado)
-  useEffect(() => {
-    const controller = new AbortController();
-    let isMounted = true;
-
-    // Guard: Only fetch protected dashboard endpoints when user session is active
-    if (!sessionUser?.id) {
-      setNotifications((prev) => (prev.length > 0 ? [] : prev));
-      fetchedUserRef.current = null;
-      return;
-    }
-
-    // Evitar llamadas duplicadas si los datos del usuario ya fueron solicitados
-    if (fetchedUserRef.current === sessionUser.id) {
-      return;
-    }
-    fetchedUserRef.current = sessionUser.id;
-
-    // Paralelizar la carga inicial usando Promise.all para minimizar latencias y cascadas
-    // No se pasa signal destructivo a peticiones globales compartidas para asegurar que finalicen y pueblen la caché
-    Promise.all([
-      api.getScores(),
-      api.getInstruments(),
-      api.getRecords(),
-      api.getThreads(),
-      api.getUserGroups(sessionUser.id),
-      api.getNotifications(sessionUser.id),
-    ]).then(([scoresData, instsData, recordsData, threadsData, userGroupsData, notifsData]) => {
-      if (!isMounted) return;
-
-      if (scoresData) setScores(scoresData);
-      if (instsData) setInstruments(instsData);
-      if (recordsData) setRecords(recordsData);
-      if (threadsData) setThreads(threadsData);
-      if (userGroupsData) {
-        setGroups(userGroupsData);
-        if (userGroupsData.length > 0) {
-          setSelectedGroupId((prev) => prev || userGroupsData[0].id);
-        }
-      }
-
-      const storedNotifications = getStoredNotifications(sessionUser.id);
-      if (storedNotifications.length > 0) {
-        setNotifications(storedNotifications);
-      } else if (notifsData && notifsData.length > 0) {
-        setNotifications(notifsData);
-      }
-    }).catch((err) => {
-      if (err?.name !== 'AbortError') {
-        console.warn('Initial dashboard fetch interrupted', err);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, [sessionUser?.id, sessionUser?.token]);
-
-  // Carga inicial básica del grupo seleccionado (Solo Miembros para métricas de resumen)
-  useEffect(() => {
-    const controller = new AbortController();
-    let isMounted = true;
-
-    if (!selectedGroupId || !sessionUser?.id) {
-      if (!sessionUser?.id) {
-        fetchedMembersGroupRef.current = null;
-      }
-      return;
-    }
-
-    if (fetchedMembersGroupRef.current === selectedGroupId) {
-      return;
-    }
-    fetchedMembersGroupRef.current = selectedGroupId;
-
-    api.getGroupMembers(selectedGroupId, { signal: controller.signal })
-      .then((members) => {
-        if (isMounted && !controller.signal.aborted) setGroupMembers(members || []);
-      })
-      .catch((err) => {
-        if (isMounted && err?.name !== 'AbortError') setGroupMembers([]);
-      });
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, [selectedGroupId, sessionUser?.id]);
-
-  // Carga bajo demanda por pestaña activa (Comunidad, Biblioteca, Ensayos)
-  useEffect(() => {
-    const controller = new AbortController();
-    let isMounted = true;
-
-    if (!selectedGroupId || !sessionUser?.id) return;
-    const reqOptions = { signal: controller.signal };
-
-    if (groupWorkspaceTab === 'comunidad') {
-      if (fetchedCommunityGroupRef.current === selectedGroupId) return;
-      fetchedCommunityGroupRef.current = selectedGroupId;
-      api.getGroupCommunity(selectedGroupId, undefined, reqOptions)
-        .then((items) => {
-          if (isMounted && !controller.signal.aborted) setGroupPosts(items || []);
-        })
-        .catch((err) => {
-          if (isMounted && err?.name !== 'AbortError') setGroupPosts([]);
-        });
-    } else if (groupWorkspaceTab === 'biblioteca') {
-      if (fetchedLibraryGroupRef.current === selectedGroupId) return;
-      fetchedLibraryGroupRef.current = selectedGroupId;
-      api.getGroupLibrary(selectedGroupId, undefined, reqOptions)
-        .then((items) => {
-          if (isMounted && !controller.signal.aborted) setGroupLibrary(items || []);
-        })
-        .catch((err) => {
-          if (isMounted && err?.name !== 'AbortError') setGroupLibrary([]);
-        });
-    } else if (groupWorkspaceTab === 'ensayos') {
-      if (fetchedRehearsalsGroupRef.current === selectedGroupId) return;
-      fetchedRehearsalsGroupRef.current = selectedGroupId;
-      api.getGroupRehearsals(selectedGroupId, undefined, reqOptions)
-        .then((items) => {
-          if (isMounted && !controller.signal.aborted) setGroupRehearsals(items || []);
-        })
-        .catch((err) => {
-          if (isMounted && err?.name !== 'AbortError') setGroupRehearsals([]);
-        });
-    }
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, [selectedGroupId, groupWorkspaceTab, sessionUser?.id]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -552,11 +459,6 @@ export default function App() {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(STORAGE_KEY);
     }
-    fetchedUserRef.current = null;
-    fetchedMembersGroupRef.current = null;
-    fetchedCommunityGroupRef.current = null;
-    fetchedLibraryGroupRef.current = null;
-    fetchedRehearsalsGroupRef.current = null;
     setNotifications([]);
     setSessionUser(null);
     setView('inicio');
