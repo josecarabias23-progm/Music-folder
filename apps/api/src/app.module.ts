@@ -18,6 +18,7 @@ import { PublicScoresService } from './public-scores/public-scores.service';
 import { StorageModule } from './storage/storage.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { GroupsModule } from './groups/groups.module';
+import { DatabaseCommonModule } from './common/database/database-common.module';
 import { buildDataSourceOptions, resolveSynchronize } from './config/database.config';
 
 import { User } from './auth/entities/user.entity';
@@ -48,6 +49,7 @@ if (synchronize && isProduction) {
 @Module({
   imports: [
     EventEmitterModule.forRoot(),
+    DatabaseCommonModule,
     TypeOrmModule.forRoot({
       ...buildDataSourceOptions(),
       // El esquema se gestiona con migraciones (ver preDeployCommand en render.yaml).
