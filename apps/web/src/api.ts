@@ -204,7 +204,13 @@ async function fetchJSON<T>(endpoint: string, options?: RequestInit, ttlMs: numb
       }
 
       return data as T;
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === 'AbortError' && isGet) {
+        const cached = responseCache.get(cacheKey);
+        if (cached) {
+          return cached.data as T;
+        }
+      }
       return null;
     } finally {
       inFlightRequests.delete(cacheKey);

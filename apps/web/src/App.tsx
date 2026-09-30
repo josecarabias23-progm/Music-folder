@@ -257,7 +257,7 @@ export default function App() {
 
     // Guard: Only fetch protected dashboard endpoints when user session is active
     if (!sessionUser?.id) {
-      setNotifications([]);
+      setNotifications((prev) => (prev.length > 0 ? [] : prev));
       fetchedUserRef.current = null;
       return;
     }
@@ -268,18 +268,17 @@ export default function App() {
     }
     fetchedUserRef.current = sessionUser.id;
 
-    const reqOptions = { signal: controller.signal };
-
     // Paralelizar la carga inicial usando Promise.all para minimizar latencias y cascadas
+    // No se pasa signal destructivo a peticiones globales compartidas para asegurar que finalicen y pueblen la caché
     Promise.all([
-      api.getScores(reqOptions),
-      api.getInstruments(reqOptions),
-      api.getRecords(reqOptions),
-      api.getThreads(reqOptions),
-      api.getUserGroups(sessionUser.id, reqOptions),
-      api.getNotifications(sessionUser.id, reqOptions),
+      api.getScores(),
+      api.getInstruments(),
+      api.getRecords(),
+      api.getThreads(),
+      api.getUserGroups(sessionUser.id),
+      api.getNotifications(sessionUser.id),
     ]).then(([scoresData, instsData, recordsData, threadsData, userGroupsData, notifsData]) => {
-      if (!isMounted || controller.signal.aborted) return;
+      if (!isMounted) return;
 
       if (scoresData) setScores(scoresData);
       if (instsData) setInstruments(instsData);
@@ -316,7 +315,9 @@ export default function App() {
     let isMounted = true;
 
     if (!selectedGroupId || !sessionUser?.id) {
-      fetchedMembersGroupRef.current = null;
+      if (!sessionUser?.id) {
+        fetchedMembersGroupRef.current = null;
+      }
       return;
     }
 
