@@ -229,7 +229,11 @@ export default function App() {
   const records = recordsData;
   const threads = threadsData;
   const groups = userGroupsData;
-  const groupMembers = groupMembersData;
+  const [extraMembers, setExtraMembers] = useState<Record<string, GroupMember[]>>({});
+  const groupMembers = [
+    ...(selectedGroupId ? extraMembers[selectedGroupId] || [] : []),
+    ...groupMembersData,
+  ];
   const groupLibrary = groupLibraryData;
   const groupRehearsals = groupRehearsalsData;
   const groupPosts = groupPostsData;
@@ -279,6 +283,21 @@ export default function App() {
   const [showUploadScoreModal, setShowUploadScoreModal] = useState(false);
   const [showNewRecordModal, setShowNewRecordModal] = useState(false);
   const [showNewThreadModal, setShowNewThreadModal] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [showJoinCodeModal, setShowJoinCodeModal] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  const handleCopyAccessCode = (code: string) => {
+    if (!code) return;
+    navigator.clipboard.writeText(code);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2500);
+    setToastMessage({
+      title: '📋 Código Copiado',
+      body: `Código "${code}" copiado al portapapeles. Compartilo con tus músicos/alumnos.`,
+      icon: '📋',
+    });
+  };
 
   // Detail Modal states
   const [selectedScore, setSelectedScore] = useState<ScoreItem | null>(null);
@@ -512,20 +531,66 @@ export default function App() {
     }
   };
 
-  const handleJoinGroup = async () => {
-    if (!sessionUser?.id || !joinGroupCode.trim()) return;
+  const handleJoinGroup = async (codeToUse?: string) => {
+    const code = (codeToUse || joinGroupCode).trim();
+    if (!code) return;
+
+    const targetUserId = sessionUser?.id || 'guest-user';
 
     try {
-      const result = await joinGroupMutation.mutateAsync({ userId: sessionUser.id, code: joinGroupCode.trim() });
+      const result = await joinGroupMutation.mutateAsync({ userId: targetUserId, code });
 
       if (result && result.group) {
-        setGroupStatus(`Te uniste al grupo "${result.group.name}".`);
+        setGroupStatus(`Te uniste a la orquesta "${result.group.name}".`);
         setJoinGroupCode('');
-        const refreshed = await api.getUserGroups(sessionUser.id);
+        setShowJoinCodeModal(false);
+        const refreshed = await api.getUserGroups(targetUserId);
         setGroups(refreshed);
-        if (refreshed.length > 0) setSelectedGroupId(refreshed[0].id);
+        setSelectedGroupId(result.group.id);
+
+        const newMember: GroupMember = {
+          id: 'm-joined-' + Date.now(),
+          role: sessionUser?.role && isDirectorRole(sessionUser.role) ? 'director' : 'musician',
+          status: 'active',
+          user: {
+            id: sessionUser?.id || 'guest-id',
+            name: sessionUser?.name || 'Músico Registrado',
+            email: sessionUser?.email || 'musico@musicfolder.app',
+            instrument_primary: sessionUser?.instrument_primary || 'Violín I',
+          },
+          group: result.group,
+        };
+
+        setExtraMembers((prev) => ({
+          ...prev,
+          [result.group.id]: [newMember, ...(prev[result.group.id] || [])],
+        }));
+
+        const instrumentName = sessionUser?.instrument_primary || 'Violín I';
+        const musicianName = sessionUser?.name || 'Músico';
+
+        const notif: NotificationItem = {
+          id: 'notif-' + Date.now(),
+          type: 'student_joined',
+          title: `El músico ${musicianName} se ha unido`,
+          message: `El músico ${musicianName} se ha unido a la orquesta en la sección ${instrumentName}.`,
+          timestamp: 'Hace un momento',
+          read: false,
+          targetId: result.group.id,
+          metadata: {
+            ensemble: result.group.name,
+            author: musicianName,
+          },
+        };
+
+        setNotifications((prev) => [notif, ...prev]);
+        setToastMessage({
+          title: '🎉 ¡Te uniste a la Orquesta!',
+          body: `El músico ${musicianName} se ha unido a la orquesta en la sección ${instrumentName}. Notificación enviada al Director.`,
+          icon: '🎻',
+        });
       } else {
-        setGroupStatus('El código es inválido o no está activo.');
+        setGroupStatus('El código de acceso es inválido o no está activo.');
       }
     } catch (err: any) {
       setGroupStatus(err.message || 'El código es inválido o no está activo.');
@@ -631,28 +696,40 @@ export default function App() {
   const handleAddScore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newScore.title) return;
-    const added = await createScoreMutation.mutateAsync({ score: newScore as any, file: newScoreFile });
-    if (added) {
-      setScores([added, ...scores]);
-    }
+    const added = await createScoreMutation.mutateAsync({
+      score: { ...newScore, groupId: selectedGroupId || 'group-1' } as any,
+      file: newScoreFile,
+    });
+    const finalScore = added || {
+      id: 'score-' + Date.now(),
+      title: newScore.title,
+      composer: newScore.composer || 'Compositor',
+      ensemble: selectedGroup?.name || newScore.ensemble,
+      category: (newScore.category as any) || 'Orquesta',
+      difficulty: newScore.difficulty || 'Intermedio',
+      groupId: selectedGroupId || 'group-1',
+      isFavorite: false,
+    };
+
+    setScores([finalScore, ...scores]);
 
     const notif: NotificationItem = {
       id: 'notif-' + Date.now(),
       type: 'sheet_uploaded',
-      title: `${newScore.title} - ${newScore.composer || 'Arturo Márquez'}`,
-      message: `Partituras actualizadas. ${newScore.ensemble}`,
+      title: `Nueva partitura disponible: ${newScore.title}`,
+      message: `Nueva partitura disponible: ${newScore.title} asignada a tu atril. (${newScore.composer || 'Obra repertorio'})`,
       timestamp: 'Hace un momento',
       read: false,
-      targetId: added?.id,
+      targetId: finalScore.id,
       metadata: {
-        ensemble: newScore.ensemble,
-        author: sessionUser?.name || 'Sofía Rossi',
+        ensemble: selectedGroup?.name || newScore.ensemble,
+        author: sessionUser?.name || 'Dirección',
       },
     };
     setNotifications((prev) => [notif, ...prev]);
     setToastMessage({
-      title: '🎼 Partitura Publicada',
-      body: `Notificación enviada a la agrupación sobre "${newScore.title}".`,
+      title: '🎼 Nueva Partitura Disponible',
+      body: `Nueva partitura disponible: ${newScore.title} asignada a tu atril.`,
       icon: '🎼',
     });
 
@@ -734,8 +811,9 @@ export default function App() {
     }
   };
 
-  // Filtered lists
+  // Filtered lists with Strict Multi-Tenant Orchestra Isolation
   const filteredScores = scores.filter((s) => {
+    if (selectedGroupId && (s as any).groupId && (s as any).groupId !== selectedGroupId) return false;
     const matchCat =
       scoreFilter === 'Todos'
         ? true
@@ -748,6 +826,11 @@ export default function App() {
     return matchCat && matchSearch;
   });
 
+  const filteredRecords = records.filter((r) => {
+    if (selectedGroupId && (r as any).groupId && (r as any).groupId !== selectedGroupId) return false;
+    return true;
+  });
+
   const filteredInstruments = instruments.filter((i) => {
     const matchCat = instFilter === 'Todos' ? true : i.family.includes(instFilter);
     const matchSearch = i.name.toLowerCase().includes(instSearch.toLowerCase());
@@ -755,6 +838,7 @@ export default function App() {
   });
 
   const filteredThreads = threads.filter((t) => {
+    if (selectedGroupId && (t as any).groupId && (t as any).groupId !== selectedGroupId) return false;
     if (forumFilter === 'Todos los temas') return true;
     return t.category === forumFilter;
   });
@@ -1034,6 +1118,56 @@ export default function App() {
           <div className="crumb">
             Music Folder <span>/</span> {nav.find((x) => x.id === view)?.label}
           </div>
+
+          {/* Orchestra Multi-Tenant Classroom Context Switcher */}
+          <div className="orchestra-header-context">
+            <div className="orchestra-select-wrapper">
+              <span className="orchestra-icon">🎼</span>
+              <select
+                className="orchestra-header-select"
+                value={selectedGroupId || ''}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+                title="Seleccionar Orquesta / Canal Privado"
+              >
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedGroup && (
+              <div className="orchestra-code-badge" title="Código de Acceso Único (Estilo Classroom)">
+                <span className="code-label">CÓDIGO:</span>
+                <strong className="code-value">{selectedGroup.join_code || 'SINF-92X'}</strong>
+                <button
+                  className="code-copy-btn"
+                  onClick={() => handleCopyAccessCode(selectedGroup.join_code || 'SINF-92X')}
+                  title="Copiar Código de Enlace para Músicos"
+                >
+                  {codeCopied ? '✓ ¡Copiado!' : '📋 Copiar'}
+                </button>
+              </div>
+            )}
+
+            <button
+              className="header-members-btn"
+              onClick={() => setShowMembersModal(true)}
+              title="Ver integrantes de la orquesta por sección"
+            >
+              👥 Integrantes ({groupMembers.length})
+            </button>
+
+            <button
+              className="header-join-code-btn"
+              onClick={() => setShowJoinCodeModal(true)}
+              title="Unirse a una Orquesta con Código"
+            >
+              🔑 Unirse con código
+            </button>
+          </div>
+
           <div className="header-actions">
             <span className={`role-badge ${isDirector ? 'director' : 'musician'}`}>{roleLabel}</span>
 
@@ -1717,7 +1851,7 @@ export default function App() {
                     <h2>Próximos ensayos</h2>
                     <button onClick={() => setView('ensayos')}>Ver calendario →</button>
                   </div>
-                  {records.map((r) => {
+                  {filteredRecords.map((r) => {
                     const badge = parseRehearsalDateBadge(r.date);
                     return (
                       <div className="agenda-card" key={r.id} onClick={() => setSelectedRecord(r)}>
@@ -1870,15 +2004,15 @@ export default function App() {
           {/* VISTA: ENSAYOS */}
           {view === 'ensayos' && (
             <>
-              {records.length > 0 && (
+              {filteredRecords.length > 0 && (
                 <section className="schedule">
                   <div>
                     <p className="eyebrow">PRÓXIMO ENSAYO</p>
-                    <h2>{records[0].title}</h2>
-                    <p>{records[0].date} · {records[0].time}</p>
-                    <p>{records[0].venue}</p>
+                    <h2>{filteredRecords[0].title}</h2>
+                    <p>{filteredRecords[0].date} · {filteredRecords[0].time}</p>
+                    <p>{filteredRecords[0].venue}</p>
                   </div>
-                  <button className="primary" onClick={() => setSelectedRecord(records[0])}>
+                  <button className="primary" onClick={() => setSelectedRecord(filteredRecords[0])}>
                     Ver detalles
                   </button>
                 </section>
@@ -1887,7 +2021,7 @@ export default function App() {
               <section className="two-col">
                 <article className="panel">
                   <h2>Agenda de Ensayos</h2>
-                  {records.map((r) => {
+                  {filteredRecords.map((r) => {
                     const badge = parseRehearsalDateBadge(r.date);
                     return (
                       <div className="agenda-card" key={r.id} onClick={() => setSelectedRecord(r)}>
@@ -2526,6 +2660,257 @@ export default function App() {
                 <button type="submit" className="primary" style={{ marginTop: '10px', width: '100%' }}>
                   Enviar Respuesta
                 </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: INTEGRANTES DE LA ORQUESTA CLASIFICADOS POR SECCIÓN */}
+      {showMembersModal && (
+        <div className="modal-overlay" onClick={() => setShowMembersModal(false)}>
+          <div className="modal-card modal-large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <span className="modal-badge">Google Classroom Style</span>
+                <h2 style={{ margin: '4px 0 0 0' }}>Integrantes de {selectedGroup?.name || 'la Orquesta'}</h2>
+                <small style={{ color: '#64748b' }}>
+                  Canal Privado • Código: <strong style={{ color: '#4f46e5' }}>{selectedGroup?.join_code || 'SINF-92X'}</strong>
+                </small>
+              </div>
+              <button className="close-btn" onClick={() => setShowMembersModal(false)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto', padding: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <strong style={{ fontSize: '14px', color: '#0f172a' }}>Código Único de Acceso:</strong>
+                  <span style={{ fontSize: '16px', fontWeight: 800, color: '#4f46e5', marginLeft: '8px', letterSpacing: '1px' }}>
+                    {selectedGroup?.join_code || 'SINF-92X'}
+                  </span>
+                </div>
+                <button
+                  className="primary"
+                  style={{ padding: '6px 14px', fontSize: '12px' }}
+                  onClick={() => handleCopyAccessCode(selectedGroup?.join_code || 'SINF-92X')}
+                >
+                  {codeCopied ? '✓ ¡Copiado!' : '📋 Copiar Código de Enlace'}
+                </button>
+              </div>
+
+              {/* CLASIFICACIÓN POR SECCIONES */}
+              {(() => {
+                const sectionMap: Record<string, typeof groupMembers> = {
+                  'Dirección & Coordinación': [],
+                  'Sección de Cuerdas (Violines, Violas, Chelos)': [],
+                  'Sección Viento Madera (Flautas, Oboes, Clarinetes, Fagotes)': [],
+                  'Sección Viento Metal (Cornos, Trompetas, Trombones)': [],
+                  'Sección Percusión & Teclados (Timbales, Arpa, Piano)': [],
+                };
+
+                groupMembers.forEach((m) => {
+                  const inst = (m.user?.instrument_primary || '').toLowerCase();
+                  const role = (m.role || '').toLowerCase();
+
+                  if (role.includes('director') || inst.includes('director')) {
+                    sectionMap['Dirección & Coordinación'].push(m);
+                  } else if (inst.includes('flauta') || inst.includes('oboe') || inst.includes('clarin') || inst.includes('fagot')) {
+                    sectionMap['Sección Viento Madera (Flautas, Oboes, Clarinetes, Fagotes)'].push(m);
+                  } else if (inst.includes('tromp') || inst.includes('corno') || inst.includes('tromb') || inst.includes('tuba')) {
+                    sectionMap['Sección Viento Metal (Cornos, Trompetas, Trombones)'].push(m);
+                  } else if (inst.includes('timbal') || inst.includes('percu') || inst.includes('arpa') || inst.includes('piano') || inst.includes('clave')) {
+                    sectionMap['Sección Percusión & Teclados (Timbales, Arpa, Piano)'].push(m);
+                  } else {
+                    sectionMap['Sección de Cuerdas (Violines, Violas, Chelos)'].push(m);
+                  }
+                });
+
+                return Object.entries(sectionMap).map(([sectionTitle, members]) => {
+                  if (members.length === 0) return null;
+
+                  return (
+                    <div key={sectionTitle} style={{ marginBottom: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', marginBottom: '12px' }}>
+                        <h4 style={{ margin: 0, fontSize: '15px', color: '#1e293b', fontWeight: 700 }}>{sectionTitle}</h4>
+                        <span style={{ background: '#e0e7ff', color: '#3730a3', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px' }}>
+                          {members.length} {members.length === 1 ? 'músico' : 'músicos'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+                        {members.map((m) => (
+                          <div
+                            key={m.id}
+                            style={{
+                              padding: '12px',
+                              background: '#ffffff',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: '10px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                background: m.role === 'director' ? '#4f46e5' : '#0284c7',
+                                color: '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                fontSize: '16px',
+                              }}
+                            >
+                              {(m.user?.name?.[0] || 'M').toUpperCase()}
+                            </div>
+                            <div>
+                              <strong style={{ display: 'block', fontSize: '14px', color: '#0f172a' }}>
+                                {m.user?.name || m.user?.email || 'Músico'}
+                              </strong>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                                <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                                  {m.user?.instrument_primary || 'Atril Principal'}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    padding: '1px 6px',
+                                    borderRadius: '6px',
+                                    fontWeight: 700,
+                                    background: m.role === 'director' ? '#fef3c7' : m.role === 'section_leader' ? '#e0e7ff' : '#f1f5f9',
+                                    color: m.role === 'director' ? '#b45309' : m.role === 'section_leader' ? '#3730a3' : '#475569',
+                                  }}
+                                >
+                                  {m.role === 'director' ? 'Director' : m.role === 'section_leader' ? 'Jefe de Cuerda' : 'Atrilista'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowMembersModal(false)}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: UNIRSE A UNA ORQUESTA CON CÓDIGO (JOIN BY CODE CLASSROOM STYLE) */}
+      {showJoinCodeModal && (
+        <div className="modal-overlay" onClick={() => setShowJoinCodeModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <span className="modal-badge">Google Classroom Model</span>
+                <h2 style={{ margin: '4px 0 0 0' }}>Unirse a una Orquesta con Código</h2>
+              </div>
+              <button className="close-btn" onClick={() => setShowJoinCodeModal(false)}>
+                ×
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '16px' }}>
+                Ingresá el Código de Acceso Único de 6 a 8 caracteres proporcionado por tu Director para asociar tu atril digital a la agrupación.
+              </p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleJoinGroup();
+                }}
+              >
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                    Código de Acceso Único
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej. SINF-92X o ORQ-789X"
+                    value={joinGroupCode}
+                    onChange={(e) => setJoinGroupCode(e.target.value.toUpperCase())}
+                    style={{
+                      width: '100%',
+                      fontSize: '18px',
+                      fontWeight: 700,
+                      letterSpacing: '2px',
+                      padding: '12px 14px',
+                      textTransform: 'uppercase',
+                      borderRadius: '8px',
+                      border: '2px solid #cbd5e1',
+                    }}
+                    autoFocus
+                  />
+                </div>
+
+                <div style={{ marginBottom: '16px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <small style={{ display: 'block', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
+                    💡 Códigos demo para probar ahora mismo:
+                  </small>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ fontSize: '12px', padding: '4px 10px' }}
+                      onClick={() => {
+                        setJoinGroupCode('SINF-92X');
+                        handleJoinGroup('SINF-92X');
+                      }}
+                    >
+                      🎻 SINF-92X (Sinfónica)
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ fontSize: '12px', padding: '4px 10px' }}
+                      onClick={() => {
+                        setJoinGroupCode('BAR-44K');
+                        handleJoinGroup('BAR-44K');
+                      }}
+                    >
+                      🎼 BAR-44K (Barroco)
+                    </button>
+                  </div>
+                </div>
+
+                {groupStatus && (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      marginBottom: '16px',
+                      background: groupStatus.includes('Te uniste') ? '#dcfce7' : '#fee2e2',
+                      color: groupStatus.includes('Te uniste') ? '#15803d' : '#b91c1c',
+                    }}
+                  >
+                    {groupStatus}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn-secondary" onClick={() => setShowJoinCodeModal(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="primary" disabled={!joinGroupCode.trim()}>
+                    Unirse a la Orquesta
+                  </button>
+                </div>
               </form>
             </div>
           </div>

@@ -225,14 +225,13 @@ async function fetchJSON<T>(endpoint: string, options?: RequestInit, ttlMs: numb
 }
 
 // Fallback initial states if API server is not running
-// Fallback initial states if API server is not running
-const fallbackScores: ScoreItem[] = [
-  { id: '1', title: 'Sinfonía N.º 5 en Do menor, Op. 67', composer: 'Ludwig van Beethoven', ensemble: 'Orquesta Sinfónica', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: true, owner: 'Orquesta Filarmónica Principal' },
-  { id: '2', title: "Serenata N.º 6 'Serenata Notturna', K. 239", composer: 'Wolfgang Amadeus Mozart', ensemble: 'Orquesta de Cámara', category: 'Cámara', difficulty: 'Intermedio', isFavorite: true, owner: 'Ensamble de Cámara' },
-  { id: '3', title: 'El lago de los cisnes, Op. 20 (Suite)', composer: 'Piotr Ilich Tchaikovsky', ensemble: 'Orquesta Sinfónica', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: true, owner: 'Orquesta Sinfónica' },
-  { id: '4', title: 'Danzón N.º 2', composer: 'Arturo Márquez', ensemble: 'Orquesta Sinfónica', category: 'Orquesta', difficulty: 'Intermedio', isFavorite: true, owner: 'Repertorio Latinoamericano' },
-  { id: '5', title: 'Las cuatro estaciones - Primavera, Op. 8 N.º 1', composer: 'Antonio Vivaldi', ensemble: 'Orquesta de Cuerdas', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false, owner: 'Barroco' },
-  { id: '6', title: 'Suite Holberg, Op. 40', composer: 'Edvard Grieg', ensemble: 'Orquesta de Cuerdas', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false, owner: 'Sección Cuerdas' },
+const fallbackScores: (ScoreItem & { groupId?: string })[] = [
+  { id: '1', groupId: 'group-1', title: 'Sinfonía N.º 5 en Do menor, Op. 67', composer: 'Ludwig van Beethoven', ensemble: 'Orquesta Sinfónica Juvenil', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: true, owner: 'Orquesta Sinfónica Juvenil' },
+  { id: '3', groupId: 'group-1', title: 'El lago de los cisnes, Op. 20 (Suite)', composer: 'Piotr Ilich Tchaikovsky', ensemble: 'Orquesta Sinfónica Juvenil', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: true, owner: 'Orquesta Sinfónica Juvenil' },
+  { id: '4', groupId: 'group-1', title: 'Danzón N.º 2', composer: 'Arturo Márquez', ensemble: 'Orquesta Sinfónica Juvenil', category: 'Orquesta', difficulty: 'Intermedio', isFavorite: true, owner: 'Orquesta Sinfónica Juvenil' },
+  { id: '5', groupId: 'group-2', title: 'Las cuatro estaciones - Primavera, Op. 8 N.º 1', composer: 'Antonio Vivaldi', ensemble: 'Ensamble de Cámara Barroco', category: 'Cámara', difficulty: 'Intermedio', isFavorite: true, owner: 'Ensamble Barroco' },
+  { id: '6', groupId: 'group-2', title: 'Suite Holberg, Op. 40', composer: 'Edvard Grieg', ensemble: 'Ensamble de Cámara Barroco', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false, owner: 'Ensamble Barroco' },
+  { id: '2', groupId: 'group-2', title: "Serenata N.º 6 'Serenata Notturna', K. 239", composer: 'Wolfgang Amadeus Mozart', ensemble: 'Ensamble de Cámara Barroco', category: 'Cámara', difficulty: 'Intermedio', isFavorite: true, owner: 'Ensamble Barroco' },
 ];
 
 const fallbackInstruments: InstrumentItem[] = [
@@ -244,17 +243,19 @@ const fallbackInstruments: InstrumentItem[] = [
   { id: 'arpa', name: 'Arpa', family: 'Cuerdas', icon: '✦', clef: 'Sol / Fa', transposition: 'En Do (con pedales)', description: 'Instrumento de 47 cuerdas pulsadas y 7 pedales de afinación.' },
 ];
 
-const fallbackRecords: RehearsalRecord[] = [
-  { id: '1', title: 'Ensayo General - Programa Sinfónico Temporada Apertura', type: 'General', date: 'Próximo miércoles 20:00 hs', time: '20:00–23:00', venue: 'Sala Principal Manuel de Falla', attendeesCount: 58, notes: '94.2% confirmados · Beethoven Mvt I & IV y Tchaikovsky. Código de vestimenta: Formal' },
-  { id: '2', title: 'Lectura de Cuerdas y Metales - Movimientos I y II', type: 'Seccional', date: 'Mañana 18:30 hs', time: '18:30–21:00', venue: 'Sala Seccional B', attendeesCount: 24, notes: 'Ajuste de pasajes veloces en Violines I y balance de cornos' },
-  { id: '3', title: 'Concierto de Gala de Apertura de Temporada', type: 'Concierto', date: 'Sábado, 02 de agosto', time: '20:30–22:30', venue: 'Gran Teatro Sinfónico', attendeesCount: 62, notes: 'Programa completo. Acceso de público a las 20:00 hs' },
+const fallbackRecords: (RehearsalRecord & { groupId?: string })[] = [
+  { id: '1', groupId: 'group-1', title: 'Ensayo General - Programa Sinfónico Temporada Apertura', type: 'General', date: 'Próximo miércoles 20:00 hs', time: '20:00–23:00', venue: 'Sala Principal Manuel de Falla', attendeesCount: 58, notes: '58 músicos confirmados (94.2%) · Beethoven Mvt I & IV, Tchaikovsky y Danzón 2.' },
+  { id: '2', groupId: 'group-1', title: 'Lectura de Cuerdas y Metales - Movimientos I y II', type: 'Seccional', date: 'Mañana 18:30 hs', time: '18:30–21:00', venue: 'Sala Seccional B', attendeesCount: 24, notes: 'Ajuste de pasajes veloces en Violines I y balance de cornos' },
+  { id: '3', groupId: 'group-2', title: 'Ensayo de Cámara Barroco y Clave', type: 'General', date: 'Viernes 17:00 hs', time: '17:00–19:30', venue: 'Aula Magna de Música', attendeesCount: 14, notes: '14 músicos (Cuerdas y Clavecín continuo) · Vivaldi Primavera y Grieg' },
+  { id: '4', groupId: 'group-2', title: 'Ensayo Seccional de Cuerdas - Vivaldi y Grieg', type: 'Seccional', date: 'Sábado 10:00 hs', time: '10:00–12:30', venue: 'Sala Seccional A', attendeesCount: 12, notes: 'Balance de articulaciones barrocas y violonchelo solo' },
 ];
 
-const fallbackThreads: ForumThread[] = [
+const fallbackThreads: (ForumThread & { groupId?: string })[] = [
   {
     id: '1',
+    groupId: 'group-1',
     title: 'Indicaciones de arcos para compases 45-60 (Violines I)',
-    author: 'Maestro Director',
+    author: 'Maestro Carlos Mendonça',
     meta: 'Hace 1 h',
     category: 'Técnica',
     likes: 18,
@@ -264,8 +265,9 @@ const fallbackThreads: ForumThread[] = [
   },
   {
     id: '2',
+    groupId: 'group-1',
     title: 'Ajuste de afinación y transposición de cornos en movimiento III',
-    author: 'Carlos Mendonça',
+    author: 'Roberto Valls',
     meta: 'Hace 3 h',
     category: 'Repertorio',
     likes: 12,
@@ -275,12 +277,15 @@ const fallbackThreads: ForumThread[] = [
   },
   {
     id: '3',
-    title: 'Sincronización de particellas digitales en tablets para la gira',
+    groupId: 'group-2',
+    title: 'Ornamentación y articulación del continuo en Vivaldi Primavera',
     author: 'Sofía Rossi',
     meta: 'Ayer',
     category: 'Gestión',
     likes: 22,
-    comments: [],
+    comments: [
+      { id: 'c3', author: 'Tomas Rivas (Clavecín)', date: 'Hace 2 h', content: 'Revisado. Mantendremos el trino en cadencia final de Violín I.' },
+    ],
   },
 ];
 
@@ -312,20 +317,195 @@ const fallbackNotifications: NotificationItem[] = [
       author: 'Sofía Rossi',
     },
   },
+];
+
+export const fallbackGroups: GroupItem[] = [
   {
-    id: 'notif-3',
-    type: 'attendance_marked',
-    title: 'Asistencia Registrada: Presente',
-    message: 'Ensayo Parcial - Sección de Vientos',
-    timestamp: 'Ayer',
-    read: true,
-    targetId: '2',
-    metadata: {
-      status: 'presente',
-      date: 'Ayer',
-    },
+    id: 'group-1',
+    name: 'Orquesta Sinfónica Juvenil',
+    description: 'Agrupación sinfónica principal de repertorio clásico, romántico y latinoamericano.',
+    type: 'ensemble',
+    visibility: 'private',
+    join_code: 'SINF-92X',
+    is_join_code_active: true,
+    owner: { id: 'user-dir-1', name: 'Maestro Carlos Mendonça', email: 'director@musicfolder.app' },
+  },
+  {
+    id: 'group-2',
+    name: 'Ensamble de Cámara Barroco',
+    description: 'Ensamble especializado en interpretación histórica (Cuerdas y Clavecín).',
+    type: 'ensemble',
+    visibility: 'private',
+    join_code: 'BAR-44K',
+    is_join_code_active: true,
+    owner: { id: 'user-dir-2', name: 'Sofía Rossi', email: 'sofia.rossi@musicfolder.app' },
   },
 ];
+
+export const fallbackGroupMembers: Record<string, GroupMember[]> = {
+  'group-1': [
+    {
+      id: 'm1',
+      role: 'director',
+      status: 'active',
+      user: { id: 'user-dir-1', name: 'Maestro Carlos Mendonça', email: 'director@musicfolder.app', instrument_primary: 'Director' },
+    },
+    {
+      id: 'm2',
+      role: 'section_leader',
+      status: 'active',
+      user: { id: 'u2', name: 'Elena Torres', email: 'elena.torres@musicfolder.app', instrument_primary: 'Violín I' },
+    },
+    {
+      id: 'm3',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u3', name: 'Mateo Ruiz', email: 'mateo.ruiz@musicfolder.app', instrument_primary: 'Violín II' },
+    },
+    {
+      id: 'm4',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u4', name: 'Lucía Morales', email: 'lucia.morales@musicfolder.app', instrument_primary: 'Violonchelo' },
+    },
+    {
+      id: 'm4b',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u4b', name: 'Agustín Benítez', email: 'agustin.b@musicfolder.app', instrument_primary: 'Viola' },
+    },
+    {
+      id: 'm4c',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u4c', name: 'Camila Soria', email: 'camila.s@musicfolder.app', instrument_primary: 'Contrabajo' },
+    },
+    {
+      id: 'm5',
+      role: 'section_leader',
+      status: 'active',
+      user: { id: 'u5', name: 'Clara Fernández', email: 'clara.f@musicfolder.app', instrument_primary: 'Flauta traversa' },
+    },
+    {
+      id: 'm5b',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u5b', name: 'Matías Rossi', email: 'matias.r@musicfolder.app', instrument_primary: 'Oboe' },
+    },
+    {
+      id: 'm5c',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u5c', name: 'Sofía Blanco', email: 'sofia.b@musicfolder.app', instrument_primary: 'Clarinete' },
+    },
+    {
+      id: 'm6',
+      role: 'section_leader',
+      status: 'active',
+      user: { id: 'u6', name: 'Roberto Valls', email: 'roberto.valls@musicfolder.app', instrument_primary: 'Trompa (Corno en Fa)' },
+    },
+    {
+      id: 'm6b',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u6b', name: 'Javier Giménez', email: 'javier.g@musicfolder.app', instrument_primary: 'Trompeta' },
+    },
+    {
+      id: 'm6c',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u6c', name: 'Nicolás Castro', email: 'nicolas.c@musicfolder.app', instrument_primary: 'Trombón' },
+    },
+    {
+      id: 'm7',
+      role: 'section_leader',
+      status: 'active',
+      user: { id: 'u7', name: 'Gabriel Silva', email: 'gabriel.s@musicfolder.app', instrument_primary: 'Timbales' },
+    },
+    {
+      id: 'm7b',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u7b', name: 'Mariana Ortiz', email: 'mariana.o@musicfolder.app', instrument_primary: 'Arpa' },
+    },
+  ],
+  'group-2': [
+    {
+      id: 'm21',
+      role: 'director',
+      status: 'active',
+      user: { id: 'user-dir-2', name: 'Sofía Rossi', email: 'sofia.rossi@musicfolder.app', instrument_primary: 'Directora' },
+    },
+    {
+      id: 'm22',
+      role: 'section_leader',
+      status: 'active',
+      user: { id: 'u22', name: 'Martín Paez', email: 'martin.p@musicfolder.app', instrument_primary: 'Violín I' },
+    },
+    {
+      id: 'm22b',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u22b', name: 'Beatriz Luna', email: 'beatriz.l@musicfolder.app', instrument_primary: 'Violín II' },
+    },
+    {
+      id: 'm23',
+      role: 'section_leader',
+      status: 'active',
+      user: { id: 'u23', name: 'Andrés Vega', email: 'andres.v@musicfolder.app', instrument_primary: 'Viola' },
+    },
+    {
+      id: 'm24',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u24', name: 'Valeria Gomez', email: 'valeria.g@musicfolder.app', instrument_primary: 'Violonchelo' },
+    },
+    {
+      id: 'm24b',
+      role: 'musician',
+      status: 'active',
+      user: { id: 'u24b', name: 'Joaquín Peralta', email: 'joaquin.p@musicfolder.app', instrument_primary: 'Contrabajo' },
+    },
+    {
+      id: 'm25',
+      role: 'section_leader',
+      status: 'active',
+      user: { id: 'u25', name: 'Tomas Rivas', email: 'tomas.r@musicfolder.app', instrument_primary: 'Clavecín' },
+    },
+  ],
+};
+
+export const fallbackGroupLibrary: Record<string, GroupLibraryItem[]> = {
+  'group-1': [
+    { id: 'gl-1', title: 'Sinfonía N.º 5 en Do menor, Op. 67 (Particellas Completas)', description: 'Beethoven - Edición crítica de ensayo para cuerdas y metales', type: 'score' },
+    { id: 'gl-2', title: 'Danzón N.º 2 - Márquez (Guión Director)', description: 'Partitura general anotada por el director con guías de tempo', type: 'score' },
+    { id: 'gl-3', title: 'El lago de los cisnes, Op. 20 (Suite)', description: 'Tchaikovsky - Material de referencia para ensamble sinfónico', type: 'score' },
+  ],
+  'group-2': [
+    { id: 'gl-21', title: "Serenata N.º 6 'Serenata Notturna', K. 239", description: 'Mozart - Particella de Violín I Solo y Clave', type: 'score' },
+    { id: 'gl-22', title: 'Las cuatro estaciones - Primavera', description: 'Vivaldi - Partitura de cámara para ensamble barroco', type: 'score' },
+  ],
+};
+
+export const fallbackGroupRehearsals: Record<string, GroupRehearsalItem[]> = {
+  'group-1': [
+    { id: 'gr-1', title: 'Ensayo General - Programa Sinfónico Temporada Apertura', date: 'Próximo miércoles 20:00 hs', time: '20:00–23:00', location: 'Sala Principal Manuel de Falla', agenda: 'Beethoven Op. 67 Mvt I & IV, Márquez Danzón 2' },
+    { id: 'gr-2', title: 'Lectura de Cuerdas y Metales', date: 'Mañana 18:30 hs', time: '18:30–21:00', location: 'Sala Seccional B', agenda: 'Ajuste de pasajes veloces en Violines I y balance de cornos' },
+  ],
+  'group-2': [
+    { id: 'gr-21', title: 'Ensayo de Cámara Barroco', date: 'Viernes 17:00 hs', time: '17:00–19:30', location: 'Aula Magna de Música', agenda: 'Mozart K. 239 y Vivaldi Primavera' },
+  ],
+};
+
+export const fallbackGroupPosts: Record<string, GroupCommunityPost[]> = {
+  'group-1': [
+    { id: 'gp-1', title: 'Indicaciones de arcos para compases 45-60 (Violines I)', content: 'Confirmado staccato en punta de arco desde el compás 48 en adelante para equilibrar con los timbales.', author: { name: 'Maestro Carlos Mendonça' } },
+    { id: 'gp-2', title: 'Afinación de cornos en movimiento III', content: 'Utilizaremos la bomba en Fa para mantener el timbre cálido en la sección central.', author: { name: 'Roberto Valls' } },
+  ],
+  'group-2': [
+    { id: 'gp-21', title: 'Apertura de inscripciones para el Ensamble Barroco', content: 'Bienvenidos todos a la nueva temporada de música de cámara.', author: { name: 'Sofía Rossi' } },
+  ],
+};
 
 export const api = {
   async getScores(options?: RequestInit): Promise<ScoreItem[]> {
@@ -447,75 +627,213 @@ export const api = {
 
   async getGroups(options?: RequestInit): Promise<GroupItem[]> {
     const data = await fetchJSON<GroupItem[]>('/groups', options);
-    return data || [];
+    return data && data.length > 0 ? data : fallbackGroups;
   },
 
   async getUserGroups(userId: string, options?: RequestInit): Promise<GroupItem[]> {
     const data = await fetchJSON<GroupItem[]>(`/groups/user/${userId}`, options);
-    return data || [];
+    return data && data.length > 0 ? data : fallbackGroups;
   },
 
   async createGroup(payload: { name: string; description?: string; type?: string; visibility?: string; ownerId: string }): Promise<GroupItem | null> {
-    return await fetchJSON<GroupItem>('/groups', {
+    const data = await fetchJSON<GroupItem>('/groups', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    if (data) return data;
+
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'ORQ-';
+    for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+
+    const newGroup: GroupItem = {
+      id: `group-${Date.now()}`,
+      name: payload.name,
+      description: payload.description || 'Canal privado de orquesta/ensamble',
+      type: payload.type || 'ensemble',
+      visibility: payload.visibility || 'private',
+      join_code: code,
+      is_join_code_active: true,
+      owner: { id: payload.ownerId, name: 'Director (Tú)', email: 'director@musicfolder.app' },
+    };
+
+    fallbackGroups.unshift(newGroup);
+    fallbackGroupMembers[newGroup.id] = [
+      {
+        id: `m-owner-${Date.now()}`,
+        role: 'director',
+        status: 'active',
+        user: { id: payload.ownerId, name: 'Director (Tú)', email: 'director@musicfolder.app', instrument_primary: 'Director' },
+      },
+    ];
+
+    return newGroup;
   },
 
   async joinGroup(payload: { userId: string; code: string }): Promise<GroupMember | null> {
-    return await fetchJSON<GroupMember>('/groups/join', {
+    const data = await fetchJSON<GroupMember>('/groups/join', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    if (data) return data;
+
+    const cleanCode = (payload.code || '').trim().toUpperCase();
+    let targetGroup = fallbackGroups.find((g) => g.join_code === cleanCode);
+
+    if (!targetGroup) {
+      targetGroup = {
+        id: `group-code-${cleanCode}`,
+        name: `Orquesta Ensamble (${cleanCode})`,
+        description: 'Canal privado de orquesta unido por código de acceso.',
+        type: 'ensemble',
+        visibility: 'private',
+        join_code: cleanCode,
+        is_join_code_active: true,
+        owner: { id: 'dir-joined', name: 'Dirección del Canal', email: 'director@canal.app' },
+      };
+      fallbackGroups.unshift(targetGroup);
+    }
+
+    const newMember: GroupMember = {
+      id: `member-${Date.now()}`,
+      role: 'musician',
+      status: 'active',
+      user: { id: payload.userId, name: 'Músico Registrado', email: 'musico@musicfolder.app', instrument_primary: 'Violín I' },
+      group: targetGroup,
+    };
+
+    if (!fallbackGroupMembers[targetGroup.id]) {
+      fallbackGroupMembers[targetGroup.id] = [];
+    }
+    fallbackGroupMembers[targetGroup.id].push(newMember);
+
+    return newMember;
   },
 
   async regenerateGroupCode(groupId: string, userId: string): Promise<GroupItem | null> {
-    return await fetchJSON<GroupItem>(`/groups/${groupId}/regenerate-code`, {
+    const data = await fetchJSON<GroupItem>(`/groups/${groupId}/regenerate-code`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId }),
     });
+    if (data) return data;
+
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'ORQ-';
+    for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+
+    const targetGroup = fallbackGroups.find((g) => g.id === groupId);
+    if (targetGroup) {
+      targetGroup.join_code = code;
+      return targetGroup;
+    }
+    return null;
   },
 
   async getGroupMembers(groupId: string, options?: RequestInit): Promise<GroupMember[]> {
     const data = await fetchJSON<GroupMember[]>(`/groups/${groupId}/members`, options);
-    return data || [];
+    if (data && data.length > 0) return data;
+    return (
+      fallbackGroupMembers[groupId] || [
+        {
+          id: 'm-def-1',
+          role: 'director',
+          status: 'active',
+          user: { id: 'u-dir', name: 'Maestro Director', email: 'director@musicfolder.app', instrument_primary: 'Director' },
+        },
+        {
+          id: 'm-def-2',
+          role: 'musician',
+          status: 'active',
+          user: { id: 'u-mus', name: 'Elena Torres', email: 'elena@musicfolder.app', instrument_primary: 'Violín I' },
+        },
+      ]
+    );
   },
 
   async getGroupLibrary(groupId: string, _userId?: string, options?: RequestInit): Promise<GroupLibraryItem[]> {
     const data = await fetchJSON<GroupLibraryItem[]>(`/groups/${groupId}/library`, options);
-    return data || [];
+    if (data && data.length > 0) return data;
+    return fallbackGroupLibrary[groupId] || [
+      { id: 'gl-def', title: 'Particella de Referencia', description: 'Repertorio del ensamble', type: 'score' },
+    ];
   },
 
-  async createGroupLibraryItem(groupId: string, payload: { userId?: string; title: string; description?: string; type?: string; file_url?: string; uploaded_by?: string }): Promise<GroupLibraryItem | null> {
-    return await fetchJSON<GroupLibraryItem>(`/groups/${groupId}/library`, {
+  async createGroupLibraryItem(
+    groupId: string,
+    payload: { userId?: string; title: string; description?: string; type?: string; file_url?: string; uploaded_by?: string },
+  ): Promise<GroupLibraryItem | null> {
+    const data = await fetchJSON<GroupLibraryItem>(`/groups/${groupId}/library`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    if (data) return data;
+
+    const item: GroupLibraryItem = {
+      id: `gl-${Date.now()}`,
+      title: payload.title,
+      description: payload.description || '',
+      type: payload.type || 'score',
+    };
+    if (!fallbackGroupLibrary[groupId]) fallbackGroupLibrary[groupId] = [];
+    fallbackGroupLibrary[groupId].unshift(item);
+    return item;
   },
 
   async getGroupRehearsals(groupId: string, _userId?: string, options?: RequestInit): Promise<GroupRehearsalItem[]> {
     const data = await fetchJSON<GroupRehearsalItem[]>(`/groups/${groupId}/rehearsals`, options);
-    return data || [];
+    if (data && data.length > 0) return data;
+    return fallbackGroupRehearsals[groupId] || [];
   },
 
-  async createGroupRehearsal(groupId: string, payload: { title: string; date?: string; time?: string; location?: string; agenda?: string; notes?: string; created_by?: string }): Promise<GroupRehearsalItem | null> {
-    return await fetchJSON<GroupRehearsalItem>(`/groups/${groupId}/rehearsals`, {
+  async createGroupRehearsal(
+    groupId: string,
+    payload: { title: string; date?: string; time?: string; location?: string; agenda?: string; notes?: string; created_by?: string },
+  ): Promise<GroupRehearsalItem | null> {
+    const data = await fetchJSON<GroupRehearsalItem>(`/groups/${groupId}/rehearsals`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    if (data) return data;
+
+    const item: GroupRehearsalItem = {
+      id: `gr-${Date.now()}`,
+      title: payload.title,
+      date: payload.date || 'Próxima fecha',
+      time: payload.time || '20:00 hs',
+      location: payload.location || 'Sala Principal',
+      agenda: payload.agenda || '',
+    };
+    if (!fallbackGroupRehearsals[groupId]) fallbackGroupRehearsals[groupId] = [];
+    fallbackGroupRehearsals[groupId].unshift(item);
+    return item;
   },
 
   async getGroupCommunity(groupId: string, _userId?: string, options?: RequestInit): Promise<GroupCommunityPost[]> {
     const data = await fetchJSON<GroupCommunityPost[]>(`/groups/${groupId}/community`, options);
-    return data || [];
+    if (data && data.length > 0) return data;
+    return fallbackGroupPosts[groupId] || [];
   },
 
-  async createGroupPost(groupId: string, payload: { title: string; content: string; authorId?: string; visibility?: string }): Promise<GroupCommunityPost | null> {
-    return await fetchJSON<GroupCommunityPost>(`/groups/${groupId}/community`, {
+  async createGroupPost(
+    groupId: string,
+    payload: { title: string; content: string; authorId?: string; visibility?: string },
+  ): Promise<GroupCommunityPost | null> {
+    const data = await fetchJSON<GroupCommunityPost>(`/groups/${groupId}/community`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+    if (data) return data;
+
+    const item: GroupCommunityPost = {
+      id: `gp-${Date.now()}`,
+      title: payload.title,
+      content: payload.content,
+      visibility: payload.visibility || 'group',
+    };
+    if (!fallbackGroupPosts[groupId]) fallbackGroupPosts[groupId] = [];
+    fallbackGroupPosts[groupId].unshift(item);
+    return item;
   },
 
   async getNotifications(userId?: string, options?: RequestInit): Promise<NotificationItem[]> {
