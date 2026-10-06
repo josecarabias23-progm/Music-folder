@@ -1171,35 +1171,6 @@ export default function App() {
           <div className="header-actions">
             <span className={`role-badge ${isDirector ? 'director' : 'musician'}`}>{roleLabel}</span>
 
-            {/* PWA Action Controls */}
-            {canInstall && (
-              <button
-                className="pwa-install-btn"
-                title="Instalar Music Folder en tu dispositivo"
-                onClick={promptInstall}
-              >
-                📲 Instalar App
-              </button>
-            )}
-
-            {hasUpdate && (
-              <button
-                className="pwa-update-btn-header"
-                title="Nueva actualización lista. Cliqueá para actualizar."
-                onClick={updateApp}
-              >
-                🔄 Actualizar App
-              </button>
-            )}
-
-            <button
-              title="Comprobar actualizaciones"
-              onClick={checkForUpdates}
-              className="pwa-check-updates-btn"
-            >
-              🔄
-            </button>
-
             <button
               title="Modo Atril / Escenario (Contraste para ensayos)"
               onClick={toggleStageMode}
@@ -1214,13 +1185,11 @@ export default function App() {
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
               }}
             >
               {isStageMode ? '☀️ Modo Normal' : '🌙 Modo Atril'}
             </button>
-
-            <button title="Búsqueda rápida">⌕</button>
 
             {/* Stitch UI Notification Bell Dropdown */}
             <div className="notification-bell-wrapper">
@@ -1339,12 +1308,29 @@ export default function App() {
               )}
             </div>
 
-            <button title="Asistente virtual" onClick={() => setAssistantOpen((open) => !open)}>✦</button>
-            <button title="Cerrar sesión" onClick={handleLogout}>⇥</button>
+            <button
+              title="Asistente virtual"
+              onClick={() => setAssistantOpen((open) => !open)}
+              style={{
+                background: '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                cursor: 'pointer',
+                color: '#4f46e5',
+              }}
+            >
+              ✦
+            </button>
+
             <div
               className="avatar"
-              title={`${sessionUser.name} • Tocar para cerrar sesión`}
-              onClick={handleLogout}
+              title={`${sessionUser.name} • Perfil de usuario`}
               style={{ cursor: 'pointer' }}
             >
               {sessionUser.name[0]?.toUpperCase() || 'V'}

@@ -368,15 +368,9 @@ header {
 }
 
 .header-actions button {
-  color: var(--primary);
-  font-size: 21px;
-  background: transparent;
-  padding: 6px 8px;
-  border-radius: 10px;
-}
-
-.header-actions button:hover {
-  background: var(--primary-soft);
+  font-size: 13px;
+  border-radius: 20px;
+  transition: all 0.15s ease;
 }
 
 .header-actions .notification-bell-btn {
