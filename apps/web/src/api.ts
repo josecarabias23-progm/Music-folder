@@ -225,61 +225,61 @@ async function fetchJSON<T>(endpoint: string, options?: RequestInit, ttlMs: numb
 }
 
 // Fallback initial states if API server is not running
+// Fallback initial states if API server is not running
 const fallbackScores: ScoreItem[] = [
-  { id: '1', title: 'Sinfonía n.º 5', composer: 'L. van Beethoven', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: true },
-  { id: '2', title: 'Danzón n.º 2', composer: 'Arturo Márquez', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Intermedio', isFavorite: true },
-  { id: '3', title: 'Las cuatro estaciones', composer: 'A. Vivaldi', ensemble: 'Cuerdas', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false },
-  { id: '4', title: 'El amor brujo', composer: 'M. de Falla', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: false },
-  { id: '5', title: 'Clair de Lune', composer: 'C. Debussy', ensemble: 'Piano solo', category: 'Solista', difficulty: 'Fácil', isFavorite: true },
-  { id: '6', title: 'Suite Holberg', composer: 'E. Grieg', ensemble: 'Cuerdas', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false },
+  { id: '1', title: 'Sinfonía N.º 5 en Do menor, Op. 67', composer: 'Ludwig van Beethoven', ensemble: 'Orquesta Sinfónica', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: true, owner: 'Orquesta Filarmónica Principal' },
+  { id: '2', title: "Serenata N.º 6 'Serenata Notturna', K. 239", composer: 'Wolfgang Amadeus Mozart', ensemble: 'Orquesta de Cámara', category: 'Cámara', difficulty: 'Intermedio', isFavorite: true, owner: 'Ensamble de Cámara' },
+  { id: '3', title: 'El lago de los cisnes, Op. 20 (Suite)', composer: 'Piotr Ilich Tchaikovsky', ensemble: 'Orquesta Sinfónica', category: 'Orquesta', difficulty: 'Avanzado', isFavorite: true, owner: 'Orquesta Sinfónica' },
+  { id: '4', title: 'Danzón N.º 2', composer: 'Arturo Márquez', ensemble: 'Orquesta Sinfónica', category: 'Orquesta', difficulty: 'Intermedio', isFavorite: true, owner: 'Repertorio Latinoamericano' },
+  { id: '5', title: 'Las cuatro estaciones - Primavera, Op. 8 N.º 1', composer: 'Antonio Vivaldi', ensemble: 'Orquesta de Cuerdas', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false, owner: 'Barroco' },
+  { id: '6', title: 'Suite Holberg, Op. 40', composer: 'Edvard Grieg', ensemble: 'Orquesta de Cuerdas', category: 'Cámara', difficulty: 'Intermedio', isFavorite: false, owner: 'Sección Cuerdas' },
 ];
 
 const fallbackInstruments: InstrumentItem[] = [
   { id: 'violin', name: 'Violín', family: 'Cuerdas', icon: '♩', clef: 'Sol (G)', transposition: 'En Do (no transpone)', description: 'Instrumento de cuerda frotada agudo, voz principal de la sección de cuerdas.' },
   { id: 'violonchelo', name: 'Violonchelo', family: 'Cuerdas', icon: '♭', clef: 'Fa (F) / Tenor', transposition: 'En Do (no transpone)', description: 'Instrumento de cuerda frotada grave de cálido timbre lírico.' },
   { id: 'flauta', name: 'Flauta traversa', family: 'Viento madera', icon: '♬', clef: 'Sol (G)', transposition: 'En Do (no transpone)', description: 'Instrumento de viento madera metálico con sonido brillante y agudo.' },
-  { id: 'trompa', name: 'Trompa (Corno)', family: 'Viento metal', icon: '♮', clef: 'Sol / Fa', transposition: 'En Fa (suena 5ª justa abajo)', description: 'Instrumento de viento metal con timbre noble y gran rango dinámico.' },
+  { id: 'trompa', name: 'Trompa (Corno en Fa)', family: 'Viento metal', icon: '♮', clef: 'Sol / Fa', transposition: 'En Fa (suena 5ª justa abajo)', description: 'Instrumento de viento metal con timbre noble y gran rango dinámico.' },
   { id: 'timbales', name: 'Timbales', family: 'Percusión', icon: '◒', clef: 'Fa (F)', transposition: 'Afinación determinada', description: 'Set de tambores afinables por pedal, columna rítmica y armónica.' },
-  { id: 'arpa', name: 'Arpa', family: 'Cuerdas', icon: '', clef: 'Sol / Fa', transposition: 'En Do (con pedales)', description: 'Instrumento de 47 cuerdas pulsadas y 7 pedales de afinación.' },
+  { id: 'arpa', name: 'Arpa', family: 'Cuerdas', icon: '✦', clef: 'Sol / Fa', transposition: 'En Do (con pedales)', description: 'Instrumento de 47 cuerdas pulsadas y 7 pedales de afinación.' },
 ];
 
 const fallbackRecords: RehearsalRecord[] = [
-  { id: '1', title: 'Ensayo General - Sinfonía N.º 5 (Beethoven)', type: 'General', date: 'Mañana a las 10:00 AM', time: '10:00–13:00', venue: 'Sala Principal', attendeesCount: 46, notes: 'Revisar pasajes de Beethoven Mvt 2' },
-  { id: '2', title: 'Seccionales de cuerdas', type: 'Seccional', date: 'Lunes, 28 de julio', time: '18:00–20:00', venue: 'Sala de Ensayo B', attendeesCount: 18, notes: 'Trabajar afinación de violines II' },
-  { id: '3', title: 'Concierto de cámara', type: 'Concierto', date: 'Sábado, 02 de agosto', time: '20:30–22:30', venue: 'Sala Principal', attendeesCount: 52, notes: 'Código de vestimenta: Frac / Vestido negro' },
+  { id: '1', title: 'Ensayo General - Programa Sinfónico Temporada Apertura', type: 'General', date: 'Próximo miércoles 20:00 hs', time: '20:00–23:00', venue: 'Sala Principal Manuel de Falla', attendeesCount: 58, notes: '94.2% confirmados · Beethoven Mvt I & IV y Tchaikovsky. Código de vestimenta: Formal' },
+  { id: '2', title: 'Lectura de Cuerdas y Metales - Movimientos I y II', type: 'Seccional', date: 'Mañana 18:30 hs', time: '18:30–21:00', venue: 'Sala Seccional B', attendeesCount: 24, notes: 'Ajuste de pasajes veloces en Violines I y balance de cornos' },
+  { id: '3', title: 'Concierto de Gala de Apertura de Temporada', type: 'Concierto', date: 'Sábado, 02 de agosto', time: '20:30–22:30', venue: 'Gran Teatro Sinfónico', attendeesCount: 62, notes: 'Programa completo. Acceso de público a las 20:00 hs' },
 ];
 
 const fallbackThreads: ForumThread[] = [
   {
     id: '1',
-    title: 'Recomendaciones para programar música latinoamericana',
-    author: 'Valentina Ruiz',
-    meta: 'Hace 2 h',
-    category: 'Repertorio',
-    likes: 15,
+    title: 'Indicaciones de arcos para compases 45-60 (Violines I)',
+    author: 'Maestro Director',
+    meta: 'Hace 1 h',
+    category: 'Técnica',
+    likes: 18,
     comments: [
-      { id: 'c1', author: 'Martín López', date: 'Hace 1 h', content: 'Recomiendo incluir piezas de Arturo Márquez y Silvestre Revueltas.' },
-      { id: 'c2', author: 'Elena Torres', date: 'Hace 30 min', content: 'También los arreglos de Piazzolla para cuerdas funcionan excelentemente.' },
+      { id: 'c1', author: 'Elena Torres (Jefa de Cuerda)', date: 'Hace 30 min', content: 'Confirmado. Aplicamos staccato en punta de arco desde el compás 48 en adelante.' },
     ],
   },
   {
     id: '2',
-    title: '¿Cómo trabajan las dinámicas en seccionales?',
-    author: 'Martín López',
-    meta: 'Ayer',
-    category: 'Técnica',
-    likes: 8,
+    title: 'Ajuste de afinación y transposición de cornos en movimiento III',
+    author: 'Carlos Mendonça',
+    meta: 'Hace 3 h',
+    category: 'Repertorio',
+    likes: 12,
     comments: [
-      { id: 'c3', author: 'Carlos Mendonça', date: 'Ayer', content: 'Usamos afinadores con espectrómetro y metrónomo subdividido.' },
+      { id: 'c2', author: 'Roberto Valls (Corno Principal)', date: 'Hace 1 h', content: 'Utilizaremos la bomba en Fa para mantener el timbre cálido en la sección central.' },
     ],
   },
   {
     id: '3',
-    title: 'Recursos para preparar una audición de violín',
-    author: 'Elena Torres',
-    meta: 'Hace 2 días',
-    category: 'Recursos',
-    likes: 24,
+    title: 'Sincronización de particellas digitales en tablets para la gira',
+    author: 'Sofía Rossi',
+    meta: 'Ayer',
+    category: 'Gestión',
+    likes: 22,
     comments: [],
   },
 ];

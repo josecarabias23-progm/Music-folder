@@ -1,25 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  font-family: 'Inter', Arial, sans-serif;
-  color: #191c1d;
-  background: #f8f9fa;
-  --bg: #f8f9fa;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+  background: #f8fafc;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-soft: #f3f4f5;
-  --surface-muted: #edeeef;
-  --surface-strong: #e7e8e9;
-  --border: #e0e2e8;
-  --line: #dfe3f3;
-  --primary: #1a237e;
-  --primary-deep: #000666;
-  --primary-soft: #e8e7ff;
-  --secondary: #6f48b2;
-  --gold: #d4af37;
-  --gold-soft: #fff6d9;
-  --text: #191c1d;
-  --text-muted: #454652;
-  --text-soft: #6b6c76;
+  --surface-soft: #f1f5f9;
+  --surface-muted: #e2e8f0;
+  --surface-strong: #cbd5e1;
+  --border: #e2e8f0;
+  --line: #cbd5e1;
+  --primary: #4f46e5;
+  --primary-deep: #0f172a;
+  --primary-soft: #eeef2f6;
+  --secondary: #7c3aed;
+  --gold: #f59e0b;
+  --gold-soft: #fef3c7;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --text-soft: #94a3b8;
   --sidebar-width: 240px;
   --header-height: 64px;
   --content-padding-x: clamp(16px, 2vw, 28px);
@@ -28,8 +28,54 @@
   --subtitle-size: 0.95rem;
   --hero-title-size: clamp(1.8rem, 2.5vw, 2.6rem);
   --hero-icon-size: clamp(3rem, 7vw, 5.25rem);
-  --shadow-card: 0 10px 26px rgba(26, 35, 126, 0.08);
-  --shadow-modal: 0 18px 38px rgba(26, 35, 126, 0.18);
+  --shadow-card: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+  --shadow-modal: 0 20px 40px -15px rgba(15, 23, 42, 0.25);
+  
+  /* Stage Dark Mode Tokens */
+  --stage-bg: #09090b;
+  --stage-surface: #18181b;
+  --stage-border: #27272a;
+  --stage-text: #f4f4f5;
+  --stage-text-muted: #a1a1aa;
+}
+
+/* Modo Atril / Escenario (Dark Mode Activado) */
+body.stage-mode {
+  background: var(--stage-bg) !important;
+  color: var(--stage-text) !important;
+}
+
+body.stage-mode .app-shell,
+body.stage-mode main {
+  background: var(--stage-bg) !important;
+}
+
+body.stage-mode .sidebar,
+body.stage-mode .panel,
+body.stage-mode .modal-card,
+body.stage-mode header,
+body.stage-mode .notification-popover {
+  background: var(--stage-surface) !important;
+  border-color: var(--stage-border) !important;
+  color: var(--stage-text) !important;
+}
+
+body.stage-mode .metric-card,
+body.stage-mode .data-card,
+body.stage-mode .agenda-card {
+  background: #121215 !important;
+  border-color: var(--stage-border) !important;
+}
+
+body.stage-mode h1, body.stage-mode h2, body.stage-mode h3, body.stage-mode h4,
+body.stage-mode strong, body.stage-mode b, body.stage-mode span, body.stage-mode div {
+  color: inherit;
+}
+
+body.stage-mode input, body.stage-mode select, body.stage-mode textarea {
+  background: #18181b !important;
+  color: #f4f4f5 !important;
+  border-color: #27272a !important;
 }
 
 * {

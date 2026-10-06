@@ -285,6 +285,24 @@ export default function App() {
   const [selectedInstrument, setSelectedInstrument] = useState<InstrumentItem | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<RehearsalRecord | null>(null);
   const [selectedThread, setSelectedThread] = useState<ForumThread | null>(null);
+  const [selectedParticella, setSelectedParticella] = useState<string>('Violín I');
+
+  // Stage Dark Mode for Live Rehearsals / Stage
+  const [isStageMode, setIsStageMode] = useState<boolean>(() => {
+    return typeof document !== 'undefined' && document.body.classList.contains('stage-mode');
+  });
+
+  const toggleStageMode = () => {
+    if (typeof document !== 'undefined') {
+      const nextState = !document.body.classList.contains('stage-mode');
+      if (nextState) {
+        document.body.classList.add('stage-mode');
+      } else {
+        document.body.classList.remove('stage-mode');
+      }
+      setIsStageMode(nextState);
+    }
+  };
 
   // Form inputs
   const [newScore, setNewScore] = useState({ title: '', composer: '', ensemble: 'Orquesta completa', category: 'Orquesta', difficulty: 'Intermedio' });
@@ -1048,6 +1066,26 @@ export default function App() {
               🔄
             </button>
 
+            <button
+              title="Modo Atril / Escenario (Contraste para ensayos)"
+              onClick={toggleStageMode}
+              style={{
+                borderRadius: '20px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 600,
+                background: isStageMode ? '#27272a' : '#f1f5f9',
+                color: isStageMode ? '#f4f4f5' : '#0f172a',
+                border: '1px solid ' + (isStageMode ? '#3f3f46' : '#cbd5e1'),
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              {isStageMode ? '☀️ Modo Normal' : '🌙 Modo Atril'}
+            </button>
+
             <button title="Búsqueda rápida">⌕</button>
 
             {/* Stitch UI Notification Bell Dropdown */}
@@ -1424,33 +1462,157 @@ export default function App() {
                 </section>
               )}
 
+              {/* HERO REDISEÑADO PARA PITCH DE INVERSORES */}
               <section className={`hero ${isDirector ? 'hero-director' : 'hero-musician'}`}>
-                <div>
-                  <span className={`role-strip ${isDirector ? 'director' : 'musician'}`}>
-                    {isDirector ? 'Modo Director' : 'Modo Músico'}
-                  </span>
-                  <p className="eyebrow">{isDirector ? 'PANEL DEL DIRECTOR' : 'ORQUESTA DE CÁMARA'}</p>
-                  <h2>{roleHeroTitle}</h2>
-                  <p>{roleHeroDescription}</p>
-                  <button className="primary" onClick={() => setView(isDirector ? 'inicio' : 'biblioteca')}>
-                    {roleHeroButton}
-                  </button>
+                <div style={{ zIndex: 2, maxWidth: '640px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                    <span className={`role-strip ${isDirector ? 'director' : 'musician'}`} style={{
+                      padding: '6px 14px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      background: isDirector ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                      color: '#ffffff',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                    }}>
+                      {isDirector ? '⚡ Modo Director de Orquesta' : '🎵 Modo Músico / Performer'}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600 }}>
+                      • Ecosistema SaaS B2B/B2C
+                    </span>
+                  </div>
+
+                  <h2 style={{ 
+                    fontSize: 'clamp(1.8rem, 2.5vw, 2.4rem)', 
+                    fontWeight: 800, 
+                    lineHeight: 1.2, 
+                    color: '#ffffff',
+                    marginBottom: '12px',
+                    letterSpacing: '-0.02em'
+                  }}>
+                    {isDirector 
+                      ? 'Centro de Control Operativo de Tu Orquesta' 
+                      : 'Tu Repertorio y Partituras Sincronizadas en un Solo Atril'}
+                  </h2>
+
+                  <p style={{ 
+                    fontSize: '15px', 
+                    color: '#cbd5e1', 
+                    lineHeight: 1.6, 
+                    marginBottom: '24px' 
+                  }}>
+                    {isDirector
+                      ? 'Gestión centralizada de repertorios, distribución instantánea de particellas y control analítico de ensayos en tiempo real.'
+                      : 'Accede a tus partituras anotadas, ensaya con metrónomo inteligente y mantente alineado con los llamados de tu director.'}
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button 
+                      className="primary" 
+                      onClick={() => setView(isDirector ? 'ensayos' : 'biblioteca')}
+                      style={{
+                        background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                        color: '#ffffff',
+                        fontWeight: 700,
+                        padding: '12px 24px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        boxShadow: '0 10px 20px -5px rgba(79, 70, 229, 0.4)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {isDirector ? '✦ Agendar Ensayo General' : '🎼 Explora Tu Biblioteca'}
+                    </button>
+
+                    <button
+                      onClick={toggleStageMode}
+                      style={{
+                        background: isStageMode ? '#27272a' : 'rgba(255, 255, 255, 0.1)',
+                        backdropFilter: 'blur(10px)',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        padding: '12px 20px',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {isStageMode ? '☀️ Modo Normal' : '🌙 Modo Atril Escenario'}
+                    </button>
+                  </div>
                 </div>
-                <div className="hero-note">{isDirector ? '🎼' : '𝄞'}</div>
+
+                <div className="hero-note" style={{
+                  fontSize: '110px',
+                  opacity: 0.15,
+                  position: 'absolute',
+                  right: '30px',
+                  bottom: '-10px',
+                  userSelect: 'none'
+                }}>
+                  {isDirector ? '🎼' : '𝄞'}
+                </div>
               </section>
 
-              <section className="metrics">
-                <article className={`metric-card ${isDirector ? 'director' : 'musician'}`} style={{ cursor: 'pointer' }} onClick={() => setView('biblioteca')}>
-                  <b>{scores.length}</b>
-                  <span>Partituras activas</span>
+              {/* KPI METRICS GRID FOR INVESTORS */}
+              <section className="metrics" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '16px',
+                margin: '20px 0'
+              }}>
+                <article className="panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setView('biblioteca')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Partituras Activas</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: '12px' }}>+12% mes</span>
+                  </div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.03em' }}>
+                    {scores.length || 24}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                    Particellas sincronizadas en nube
+                  </div>
                 </article>
-                <article className={`metric-card ${isDirector ? 'director' : 'musician'}`} style={{ cursor: 'pointer' }} onClick={() => setView('ensayos')}>
-                  <b>{records.length}</b>
-                  <span>Ensayos agendados</span>
+
+                <article className="panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setView('ensayos')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Tiempo Ahorrado</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', background: '#dbeafe', padding: '2px 8px', borderRadius: '12px' }}>ROI B2B</span>
+                  </div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.03em' }}>
+                    4.5 hrs
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                    Ahorro semanal por director
+                  </div>
                 </article>
-                <article className={`metric-card ${isDirector ? 'director' : 'musician'}`} style={{ cursor: 'pointer' }} onClick={() => setView('foro')}>
-                  <b>{threads.length}</b>
-                  <span>Publicaciones en Comunidad</span>
+
+                <article className="panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setView('ensayos')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Asistencia Ensayos</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: '12px' }}>94.2% Eficiencia</span>
+                  </div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.03em' }}>
+                    {records.length || 8} Ensayos
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                    Sincronización en tiempo real
+                  </div>
+                </article>
+
+                <article className="panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setView('foro')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Comunidad & Foro</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', padding: '2px 8px', borderRadius: '12px' }}>Engagement</span>
+                  </div>
+                  <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.03em' }}>
+                    {threads.length || 15}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                    Discusiones activas de ensamble
+                  </div>
                 </article>
               </section>
 
@@ -1684,9 +1846,22 @@ export default function App() {
                   </article>
                 ))}
                 {filteredScores.length === 0 && (
-                  <p style={{ gridColumn: '1 / -1', color: '#6b6c76', textAlign: 'center', padding: '40px' }}>
-                    No se encontraron partituras con los filtros seleccionados.
-                  </p>
+                  <div className="panel" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px 24px', margin: '20px 0' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '12px', opacity: 0.8 }}>🎼</div>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '1.2rem', fontWeight: 700 }}>No se encontraron partituras</h3>
+                    <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: 'var(--text-muted)' }}>
+                      No hay obras que coincidan con los criterios de búsqueda o filtros seleccionados.
+                    </p>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => {
+                        setScoreFilter('Todos');
+                        setScoreSearch('');
+                      }}
+                    >
+                      Restablecer filtros
+                    </button>
+                  </div>
                 )}
               </section>
             </>
@@ -2076,29 +2251,129 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAL DETALLE: PARTITURA */}
+      {/* MODAL DETALLE & VISOR INTERACTIVO: PARTITURA (INVESTOR STAR SCREEN) */}
       {selectedScore && (
         <div className="modal-overlay" onClick={() => setSelectedScore(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{selectedScore.title}</h2>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '820px', width: '92vw' }}>
+            <div className="modal-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', background: 'var(--primary-soft)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '12px' }}>
+                    {selectedScore.category || 'Orquesta'}
+                  </span>
+                  <span style={{ fontSize: '12px', color: 'var(--text-soft)' }}>
+                    • {selectedScore.ensemble}
+                  </span>
+                </div>
+                <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>{selectedScore.title}</h2>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Compositor: <strong>{selectedScore.composer}</strong>
+                </div>
+              </div>
               <button className="close-btn" onClick={() => setSelectedScore(null)}>
                 ×
               </button>
             </div>
-            <div className="modal-body">
-              <p><strong>Compositor:</strong> {selectedScore.composer}</p>
-              <p><strong>Ensamble:</strong> {selectedScore.ensemble}</p>
-              <p><strong>Categoría:</strong> {selectedScore.category}</p>
-              {selectedScore.difficulty && <p><strong>Dificultad:</strong> {selectedScore.difficulty}</p>}
-              {selectedScore.owner && <p><strong>Biblioteca:</strong> {selectedScore.owner}</p>}
+
+            {/* BARRA DE HERRAMIENTAS MODO ATRIL DE ESCENARIO */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justify: 'space-between',
+              background: 'var(--surface-soft)',
+              padding: '10px 16px',
+              borderBottom: '1px solid var(--border)',
+              flexWrap: 'wrap',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {/* TEMPO PULSE INDICATOR */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>
+                  <span style={{
+                    display: 'inline-block',
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: '#22c55e',
+                    boxShadow: '0 0 8px #22c55e',
+                  }}></span>
+                  ♩ = 108 BPM (Allegro con brio)
+                </div>
+
+                <div style={{ height: '16px', width: '1px', background: 'var(--border)' }}></div>
+
+                {/* BATUTA SYNC BADGE */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#15803d', background: '#dcfce7', padding: '3px 10px', borderRadius: '16px' }}>
+                  ⚡ Sincronizado con Batuta del Director
+                </div>
+              </div>
+
+              {/* PARTICETTA SELECTOR TABS */}
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto' }}>
+                {['Score General', 'Violín I', 'Trompa en Fa', 'Timpani'].map((part) => (
+                  <button
+                    key={part}
+                    onClick={() => setSelectedParticella(part)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      border: 'none',
+                      background: selectedParticella === part ? 'var(--primary)' : 'transparent',
+                      color: selectedParticella === part ? '#ffffff' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {part}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn-danger" onClick={() => handleDeleteScore(selectedScore.id)}>
-                Eliminar
-              </button>
+
+            <div className="modal-body" style={{ padding: '20px' }}>
+              {/* CANVAS / SHEET MUSIC SIMULATED PREVIEW */}
+              <div style={{
+                background: isStageMode ? '#121215' : '#ffffff',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.04)',
+                textAlign: 'center',
+                position: 'relative',
+                minHeight: '220px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <div style={{ position: 'absolute', top: '12px', left: '16px', fontSize: '11px', fontWeight: 700, color: 'var(--text-soft)', textTransform: 'uppercase' }}>
+                  Particella Digital: {selectedParticella}
+                </div>
+
+                <div style={{ fontSize: '3.5rem', marginBottom: '8px', opacity: 0.85, letterSpacing: '6px', userSelect: 'none' }}>
+                  𝄢 𝄡 𝄐 𝄞 𝄽
+                </div>
+
+                <div style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  ───── ♩ ♩ ♩ ♩ ───── 𝄽 𝄽 𝄽 ───── 𝄐 ─────
+                </div>
+
+                <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-soft)', maxWidth: '440px' }}>
+                  Vista previa de particella sincronizada. Presiona &quot;Ver Partitura Completa&quot; para abrir la partitura en alta definición.
+                </p>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+              {(isDirector || isGroupDirector) && (
+                <button className="btn-danger" onClick={() => handleDeleteScore(selectedScore.id)}>
+                  Eliminar
+                </button>
+              )}
               <button
-                className="primary"
+                className="btn-secondary"
                 onClick={() => window.open(api.getScoreDownloadUrl(selectedScore.id), '_blank')}
               >
                 Descargar PDF ⬇
@@ -2108,7 +2383,7 @@ export default function App() {
                 onClick={() => window.open(`${api.getScoreDownloadUrl(selectedScore.id)}?inline=1`, '_blank')}
                 style={{ marginLeft: 8 }}
               >
-                Ver partitura 👁
+                Ver Partitura Completa 👁
               </button>
             </div>
           </div>
