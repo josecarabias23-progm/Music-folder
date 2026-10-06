@@ -2341,3 +2341,122 @@ button.primary,
   cursor: not-allowed;
 }
 
+/* ==========================================================================
+   HOTFIX: HERO CONTRAST, METRICS GRID, APP PALETTE & ASSISTANT Z-INDEX
+   ========================================================================== */
+
+/* 1. Base App Palette & Clean Slate Neutral Background */
+body, #root, .app-shell, main {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+header,
+.app-shell.role-director header,
+.app-shell.role-musician header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.sidebar,
+.app-shell.role-director .sidebar,
+.app-shell.role-musician .sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid #e2e8f0 !important;
+}
+
+.panel,
+.app-shell.role-director .panel,
+.app-shell.role-musician .panel {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+  border-radius: 16px !important;
+}
+
+/* 2. Hero High Contrast & Presence Override */
+.hero,
+.hero-director,
+.hero-musician,
+.app-shell.role-director .hero,
+.app-shell.role-musician .hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%) !important;
+  border: 1px solid #1e293b !important;
+  color: #ffffff !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.4) !important;
+}
+
+.hero h2,
+.hero-director h2,
+.hero-musician h2 {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.hero p,
+.hero-director p,
+.hero-musician p {
+  color: #cbd5e1 !important;
+}
+
+.hero .eyebrow {
+  color: #818cf8 !important;
+}
+
+.hero button:not(.primary) {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* 3. Metrics Grid Layout & Typography Overrides */
+.metrics {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 16px !important;
+  margin: 24px 0 !important;
+}
+
+.metrics .panel,
+.metrics article,
+.metric-card {
+  min-height: 110px !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+  border-radius: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  padding: 16px 20px !important;
+}
+
+.metrics b,
+.metrics .metric-number {
+  font-size: 1.8rem !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  margin: 8px 0 4px 0 !important;
+  color: #0f172a !important;
+}
+
+.metrics span,
+.metrics .metric-label {
+  font-size: 11px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  color: #64748b !important;
+}
+
+/* 4. Assistant Floating Widget Z-Index & Content Bottom Padding */
+.content {
+  padding-bottom: 60px !important;
+}
+
+.assistant-widget {
+  z-index: 100 !important;
+}
+

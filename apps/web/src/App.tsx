@@ -1529,14 +1529,14 @@ export default function App() {
                     <button
                       onClick={toggleStageMode}
                       style={{
-                        background: isStageMode ? '#27272a' : 'rgba(255, 255, 255, 0.1)',
-                        backdropFilter: 'blur(10px)',
+                        background: 'rgba(255, 255, 255, 0.12)',
                         color: '#ffffff',
                         fontWeight: 600,
                         padding: '12px 20px',
                         borderRadius: '10px',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        cursor: 'pointer'
+                        border: '1px solid rgba(255, 255, 255, 0.3)',
+                        cursor: 'pointer',
+                        backdropFilter: 'blur(10px)'
                       }}
                     >
                       {isStageMode ? '☀️ Modo Normal' : '🌙 Modo Atril Escenario'}
@@ -1552,7 +1552,7 @@ export default function App() {
                   bottom: '-10px',
                   userSelect: 'none'
                 }}>
-                  {isDirector ? '🎼' : '𝄞'}
+                  {isDirector ? '🎼' : 'Gl'}
                 </div>
               </section>
 
@@ -1561,56 +1561,56 @@ export default function App() {
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: '16px',
-                margin: '20px 0'
+                margin: '24px 0'
               }}>
-                <article className="panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setView('biblioteca')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Partituras Activas</span>
+                <article className="panel metric-card" style={{ padding: '16px 20px', minHeight: '110px', display: 'flex', flexDirection: 'column', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setView('biblioteca')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Partituras Activas</span>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: '12px' }}>+12% mes</span>
                   </div>
-                  <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.03em' }}>
+                  <div className="metric-number" style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: '8px 0 4px 0', lineHeight: 1.1 }}>
                     {scores.length || 24}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                  <div className="metric-label" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#64748b' }}>
                     Particellas sincronizadas en nube
                   </div>
                 </article>
 
-                <article className="panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setView('ensayos')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Tiempo Ahorrado</span>
+                <article className="panel metric-card" style={{ padding: '16px 20px', minHeight: '110px', display: 'flex', flexDirection: 'column', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setView('ensayos')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Tiempo Ahorrado</span>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', background: '#dbeafe', padding: '2px 8px', borderRadius: '12px' }}>ROI B2B</span>
                   </div>
-                  <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.03em' }}>
+                  <div className="metric-number" style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: '8px 0 4px 0', lineHeight: 1.1 }}>
                     4.5 hrs
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                  <div className="metric-label" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#64748b' }}>
                     Ahorro semanal por director
                   </div>
                 </article>
 
-                <article className="panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setView('ensayos')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Asistencia Ensayos</span>
+                <article className="panel metric-card" style={{ padding: '16px 20px', minHeight: '110px', display: 'flex', flexDirection: 'column', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setView('ensayos')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Asistencia Ensayos</span>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: '12px' }}>94.2% Eficiencia</span>
                   </div>
-                  <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.03em' }}>
+                  <div className="metric-number" style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: '8px 0 4px 0', lineHeight: 1.1 }}>
                     {records.length || 8} Ensayos
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                  <div className="metric-label" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#64748b' }}>
                     Sincronización en tiempo real
                   </div>
                 </article>
 
-                <article className="panel" style={{ padding: '20px', cursor: 'pointer' }} onClick={() => setView('foro')}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-muted)' }}>Comunidad & Foro</span>
+                <article className="panel metric-card" style={{ padding: '16px 20px', minHeight: '110px', display: 'flex', flexDirection: 'column', justifyContent: 'center', cursor: 'pointer' }} onClick={() => setView('foro')}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Comunidad & Foro</span>
                     <span style={{ fontSize: '11px', fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', padding: '2px 8px', borderRadius: '12px' }}>Engagement</span>
                   </div>
-                  <div style={{ fontSize: '2.2rem', fontWeight: 800, marginTop: '8px', letterSpacing: '-0.03em' }}>
+                  <div className="metric-number" style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0f172a', margin: '8px 0 4px 0', lineHeight: 1.1 }}>
                     {threads.length || 15}
                   </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-soft)', marginTop: '4px' }}>
+                  <div className="metric-label" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#64748b' }}>
                     Discusiones activas de ensamble
                   </div>
                 </article>
